@@ -16,7 +16,10 @@ func process_immediately():
 	for event in self.queue:
 		event.process_immediately()
 	self.queue.clear()
-	
+
+func get_current_state_id():
+	return self.child_states[self.current_state_index].id
+
 func get_child_state_index_by_id(state_id: String):
 	for i in range(len(self.child_states)):
 		if self.child_states[i].id == state_id:
@@ -48,9 +51,10 @@ func _on_update(delta: float, speed_scale: float = 1.0):
 		self.child_states[self.current_state_index]._on_enter()
 		
 	var child_state_command = self.child_states[self.current_state_index]._on_update(delta, speed_scale)
+	
 	if child_state_command is State.EXIT_COMMAND:
 		self.child_states[self.current_state_index]._on_exit()
-		self._on_child_state_exited()
+		return self._on_child_state_exited()
 				
 func clear():
 	self.queue.clear()

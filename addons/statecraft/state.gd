@@ -28,6 +28,8 @@ class DynamicTween:
 		self.terminal = terminal
 	
 	func start():
+		if self.tween:
+			self.tween.kill()
 		self._finished = false
 		self.tween = self.scene_node.create_tween()
 		create_tween_method.call(self.tween)
@@ -128,7 +130,7 @@ func _on_enter():
 	print(self.id + "._on_enter()")
 	self.custom_properties = {}
 
-	var elapsed_runtime = 0.0
+	self.elapsed_runtime = 0.0
 
 	if self.on_enter_method and is_method_still_bound(self.on_enter_method):
 		self.on_enter_method.call(self)
@@ -146,7 +148,6 @@ func _on_update(delta: float, speed_scale: float = 1):
 	self.elapsed_runtime += delta
 	
 	if self.timeout_duration and self.elapsed_runtime >= self.timeout_duration / speed_scale:
-		print("Timeout")
 		command = State.exit()
 		
 	# Check to see if all terminal tweens have ended. if they have, exit the event.
