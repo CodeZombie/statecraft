@@ -1,9 +1,6 @@
 class_name State
 
-class EXIT_COMMAND:
-	pass
-	
-enum StateState{WAITING, RUNNING, EXITING}
+enum StateState{READY, RUNNING, WAITING_TO_EXIT, EXITED}
 
 #TODO:
 # in the EventQueue and StateMachine, we need to check the return types from the `_process` method
@@ -74,23 +71,24 @@ var timeout_duration: float
 var elapsed_runtime: float
 var dynamic_tweens: Array[DynamicTween] = []
 var custom_properties: Dictionary = {}
+var _state: StateState = StateState.READY
 
-var _state: StateState = StateState.WAITING
+func exit():
+	self._state = StateState.WAITING_TO_EXIT
 
-# Static Methods:
-static func exit():
-	return EXIT_COMMAND.new()
-	
-# Instance Methods
-func run(delta: float, speed_scale: float):
-	if _state == StateState.WAITING:
+func run(delta: float, speed_scale: float, loop: bool = false):
+	if _state == StateState.READY:
 		self._on_enter()
 		
-	if self._state == StateState.RUNNING:
+	elif self._state == StateState.RUNNING:
 		var command = self._on_update(delta, speed_scale)
 		
-		if command is State.EXIT_COMMAND:
-			self._on_exit()
+	elif self._state == StateState.WAITING_TO_EXIT:
+		self._on_exit()
+		if loop:
+			self._state = StateState.READY
+		else:
+			self._state = StateState.EXITED
 		
 func _init(id: String, skippable: bool = false):
 	self.on_enter_method = null
@@ -141,14 +139,11 @@ func _on_enter():
 	self._state = StateState.RUNNING
 
 func _on_update(delta: float, speed_scale: float = 1):
-	# on_update can return a "EXIT_COMMAND", which will ask the parent state to exit this current one.
-	var command = null
 	
 	# If there's a timeout, check to see if it has elapsed, exiting if it has.
 	self.elapsed_runtime += delta
-	
 	if self.timeout_duration and self.elapsed_runtime >= self.timeout_duration / speed_scale:
-		command = State.exit()
+		return self.exit()
 		
 	# Check to see if all terminal tweens have ended. if they have, exit the event.
 	var has_any_terminal_tweens = len(self.dynamic_tweens.filter(func(dt): return dt.terminal)) > 0
@@ -159,37 +154,34 @@ func _on_update(delta: float, speed_scale: float = 1):
 		if dynamic_tween.terminal and not dynamic_tween.is_finished():
 			have_all_terminal_tweens_finished = false
 	if has_any_terminal_tweens and have_all_terminal_tweens_finished:
-		command = State.exit()
-
-	if self.on_update_method and is_method_still_bound(self.on_update_method):
-		var on_update_method_return_value = self.on_update_method.call(self, delta * speed_scale)
-		if on_update_method_return_value is EXIT_COMMAND:
-			command = on_update_method_return_value
-		elif on_update_method_return_value != null:
-			push_error("Statecraft Error: A State's `on_update` method should not return anything except State Commands.")
-	
-	if command is EXIT_COMMAND:
-		return command
+		return self.exit()
+		
+	if self._state == StateState.RUNNING:
+		if self.on_update_method and is_method_still_bound(self.on_update_method):
+			self.on_update_method.call(self, delta * speed_scale)
 
 func _on_exit(allow_repeat: bool = false):
 	print(self.id + "._on_exit()")
-	self._state = StateState.EXITING
 	for dynamic_tween in dynamic_tweens:
 		dynamic_tween.kill()
 	if self.on_exit_method and is_method_still_bound(self.on_exit_method):
 		self.on_exit_method.call(self)
-		
-	self._state = StateState.WAITING
-
+	self._state = StateState.READY
+	
 func process_immediately():
 	if self.skippable:
 		return
-	
-	while self._on_update(1, 1) is not EXIT_COMMAND:
-		pass
+	while self._state != StateState.WAITING_TO_EXIT:
+		self._on_update(1, 1)
 
 func is_method_still_bound(method: Callable) -> bool:
 	if method.get_object() == null:
 		push_error("ERROR: attemping to call method on State which has become unbound: ", self.created_by)
 		return false
 	return true
+	
+func get_debug_string() -> String:
+	return self.id + ": " + self.get_state_string()
+
+func get_state_string() -> String:
+	return StateState.keys()[self._state]

@@ -5,21 +5,16 @@
 
 [node name="test_scene" type="Node2D"]
 
-[node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label")]
+[node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b")]
 position = Vector2(718, 461)
 texture = ExtResource("1_k0vpn")
 script = ExtResource("2_cet31")
+speed = null
 pos_a = NodePath("../pos_a")
 pos_b = NodePath("../pos_b")
-debug_label = NodePath("../Label")
 
 [node name="pos_a" type="Node2D" parent="."]
 position = Vector2(956, 513)
 
 [node name="pos_b" type="Node2D" parent="."]
 position = Vector2(216, 131)
-
-[node name="Label" type="Label" parent="."]
-offset_right = 40.0
-offset_bottom = 23.0
-text = "eeeee"
