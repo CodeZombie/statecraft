@@ -1,7 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://byaxnyxy8x01g"]
+[gd_scene load_steps=5 format=3 uid="uid://byaxnyxy8x01g"]
 
 [ext_resource type="Texture2D" uid="uid://cuolgs6oqu5jq" path="res://icon.svg" id="1_k0vpn"]
 [ext_resource type="Script" path="res://guy.gd" id="2_cet31"]
+[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://assets/gun_body.png" id="3_sletq"]
+[ext_resource type="Script" path="res://held_object.gd" id="4_5p1h2"]
 
 [node name="test_scene" type="Node2D"]
 
@@ -12,6 +14,12 @@ script = ExtResource("2_cet31")
 pos_a = NodePath("../pos_a")
 pos_b = NodePath("../pos_b")
 debug_label = NodePath("../Label")
+
+[node name="Sprite2D" type="Sprite2D" parent="guy"]
+position = Vector2(64, 33)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("3_sletq")
+script = ExtResource("4_5p1h2")
 
 [node name="pos_a" type="Node2D" parent="."]
 position = Vector2(956, 513)
