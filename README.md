@@ -1,2 +1,1 @@
-# statecraft
-Godot State Management Library
+![image](statecraft_logo.png)

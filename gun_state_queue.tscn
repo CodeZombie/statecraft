@@ -1,0 +1,46 @@
+[gd_scene load_steps=6 format=3 uid="uid://djbcbmv3cwvns"]
+
+[ext_resource type="Script" path="res://gun_state_queue.gd" id="1_21dbx"]
+[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://assets/gun_body.png" id="1_xnr8i"]
+[ext_resource type="Texture2D" uid="uid://dry7mksw1rjv2" path="res://assets/magazine.png" id="2_tw45k"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_k4nyq"]
+size = Vector2(76.9732, 132.198)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4by8c"]
+size = Vector2(67, 44)
+
+[node name="GunStateQueue" type="Node2D" node_paths=PackedStringArray("debug_label")]
+script = ExtResource("1_21dbx")
+debug_label = NodePath("Label")
+
+[node name="GunBody" type="Sprite2D" parent="."]
+position = Vector2(572, 288)
+texture = ExtResource("1_xnr8i")
+
+[node name="Magazine" type="Sprite2D" parent="GunBody"]
+z_index = -1
+position = Vector2(89, 45)
+texture = ExtResource("2_tw45k")
+
+[node name="magazine_area" type="Area2D" parent="GunBody/Magazine"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="GunBody/Magazine/magazine_area"]
+position = Vector2(-0.966858, 0.857574)
+rotation = -0.23911
+scale = Vector2(1, 1)
+shape = SubResource("RectangleShape2D_k4nyq")
+
+[node name="trigger_area" type="Area2D" parent="GunBody"]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="GunBody/trigger_area"]
+position = Vector2(5.5, 0)
+shape = SubResource("RectangleShape2D_4by8c")
+
+[node name="Label" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 23.0
+text = "aaaaa"
+
+[connection signal="input_event" from="GunBody/Magazine/magazine_area" to="." method="_on_magazine_area_input_event"]
+[connection signal="input_event" from="GunBody/trigger_area" to="." method="_on_trigger_area_input_event"]

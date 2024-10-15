@@ -1,0 +1,19 @@
+[gd_scene load_steps=3 format=3 uid="uid://byaxnyxy8x01g"]
+
+[ext_resource type="Texture2D" uid="uid://cuolgs6oqu5jq" path="res://icon.svg" id="1_k0vpn"]
+[ext_resource type="Script" path="res://guy.gd" id="2_cet31"]
+
+[node name="test_scene" type="Node2D"]
+
+[node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b")]
+position = Vector2(718, 461)
+texture = ExtResource("1_k0vpn")
+script = ExtResource("2_cet31")
+pos_a = NodePath("../pos_a")
+pos_b = NodePath("../pos_b")
+
+[node name="pos_a" type="Node2D" parent="."]
+position = Vector2(956, 513)
+
+[node name="pos_b" type="Node2D" parent="."]
+position = Vector2(216, 131)
