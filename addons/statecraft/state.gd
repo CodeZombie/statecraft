@@ -1,6 +1,6 @@
 class_name State
 
-enum StateState{READY, RUNNING, WAITING_TO_EXIT, EXITED}
+enum Status{READY, RUNNING, WAITING_TO_EXIT, EXITED}
 
 #TODO:
 # in the EventQueue and StateMachine, we need to check the return types from the `_process` method
@@ -70,7 +70,7 @@ var created_by: String
 var timeout_duration: float
 var dynamic_tweens: Array[DynamicTween] = []
 var custom_properties: Dictionary = {}
-var _state: StateState = StateState.READY
+var _status: Status = Status.READY
 var elapsed_runtime: float
 
 func copy(new_state_id: String):
@@ -85,21 +85,21 @@ func copy(new_state_id: String):
 	return copy_state
 
 func exit():
-	self._state = StateState.WAITING_TO_EXIT
+	self._status = Status.WAITING_TO_EXIT
 
 func run( speed_scale: float, loop: bool = false):
-	if _state == StateState.READY:
+	if self._status == Status.READY:
 		self._on_enter([])
 		
-	elif self._state == StateState.RUNNING:
+	elif self._status == Status.RUNNING:
 		var command = self._on_update([], Engine.get_main_loop().root.get_process_delta_time(), speed_scale)
 		
-	elif self._state == StateState.WAITING_TO_EXIT:
+	elif self._status == Status.WAITING_TO_EXIT:
 		self._on_exit([])
 		if loop:
-			self._state = StateState.READY
+			self._status = Status.READY
 		else:
-			self._state = StateState.EXITED
+			self._status = Status.EXITED
 		
 func _init(id: String, skippable: bool = false):
 	self.on_enter_method = null
@@ -150,7 +150,7 @@ func _on_enter(state_stack):
 	for dynamic_tween in self.dynamic_tweens:
 		dynamic_tween.start()
 		
-	self._state = StateState.RUNNING
+	self._status = Status.RUNNING
 
 func _on_update(state_stack, delta: float, speed_scale: float = 1):
 	
@@ -170,7 +170,7 @@ func _on_update(state_stack, delta: float, speed_scale: float = 1):
 	if has_any_terminal_tweens and have_all_terminal_tweens_finished:
 		return self.exit()
 		
-	if self._state == StateState.RUNNING:
+	if self._status == Status.RUNNING:
 		if self.on_update_method and is_method_still_bound(self.on_update_method):
 			self.on_update_method.call([self] + state_stack, delta * speed_scale)
 
@@ -180,12 +180,12 @@ func _on_exit(state_stack, allow_repeat: bool = false):
 		dynamic_tween.kill()
 	if self.on_exit_method and is_method_still_bound(self.on_exit_method):
 		self.on_exit_method.call([self] + state_stack)
-	self._state = StateState.READY
+	self._status = Status.READY
 
 func process_immediately():
 	if self.skippable:
 		return
-	while self._state != StateState.WAITING_TO_EXIT:
+	while self._status != Status.WAITING_TO_EXIT:
 		self._on_update(1, 1)
 
 func is_method_still_bound(method: Callable) -> bool:
@@ -195,7 +195,7 @@ func is_method_still_bound(method: Callable) -> bool:
 	return true
 	
 func get_debug_string() -> String:
-	return self.id + ": " + self.get_state_string()
+	return self.id + ": " + self.get_status_string()
 
-func get_state_string() -> String:
-	return StateState.keys()[self._state]
+func get_status_string() -> String:
+	return Status.keys()[self._status]

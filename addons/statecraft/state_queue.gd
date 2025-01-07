@@ -53,22 +53,22 @@ func _on_update(state_stack, delta: float, speed_scale: float = 1.0):
 	super(state_stack, delta, speed_scale)
 	
 	# If the current state has ended, transition to the next one.
-	if self._get_current_state()._state == StateState.WAITING_TO_EXIT:
+	if self._get_current_state()._status == Status.WAITING_TO_EXIT:
 		self._get_current_state()._on_exit([self] + state_stack)
 		self._on_child_state_exited()
 		self.current_state_index = self.next_state_id
 		
-	elif self._get_current_state()._state == StateState.READY:
+	elif self._get_current_state()._status == Status.READY:
 		self._get_current_state()._on_enter([self] + state_stack)
 		
-	elif self._get_current_state()._state == StateState.RUNNING:
+	elif self._get_current_state()._status == Status.RUNNING:
 		self.child_states[self.current_state_index]._on_update([self] + state_stack, delta, speed_scale)
 
 func clear():
 	self.queue.clear()
 	
 func get_debug_string() -> String:
-	var s: String = "\n" + self.id + ": " + self.get_state_string()
+	var s: String = "\n" + self.id + ": " + self.get_status_string()
 	for child_state in self.child_states:
 		s += "\n   " + child_state.get_debug_string()
 	return s

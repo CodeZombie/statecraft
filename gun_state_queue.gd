@@ -11,9 +11,9 @@ var gun_state_machine: StateMachine = StateMachine.new("gun_state_machine")
 var gunbody_start_position: Vector2
 var trigger_pressed = false
 var magazine_pressed = false
-var magazine_capacity = 12
+var magazine_capacity = 40
 var loaded_rounds = magazine_capacity
-@export var firing_interval = 0.2
+@export var firing_interval = 0.05
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
@@ -50,22 +50,18 @@ func _ready() -> void:
 	.set_on_exit(func(state_stack):
 		return gun_state_machine.transition_to("idle")))
 		
-	gun_state_machine.add_state(
-		StateMachine.new("jammed")
-		.add_state(
-			State.new("idle")
-			.set_on_update(func(state_stack, delta):
-				if self.trigger_pressed:
-					return state_stack[1].transition_to("click")
-				if self.magazine_pressed:
-					return gun_state_machine.transition_to("reload")
-				)
+	gun_state_machine.add_state(StateMachine.new("jammed")
+	.add_state(State.new("idle")
+	.set_on_update(func(state_stack, delta):
+		if self.trigger_pressed:
+			return state_stack[1].transition_to("click")
+		if self.magazine_pressed:
+			return gun_state_machine.transition_to("reload")))
+	.add_state(gun_state_machine.get_state("click").copy("click")
+		.set_on_exit(func(state_stack):
+			return state_stack[1].transition_to("idle")
 			)
-		.add_state(
-			gun_state_machine.get_state("click").copy("click")
-			.set_on_exit(func(state_stack): return state_stack[1].transition_to("idle") )
-			)
-		)
+		))
 	
 	# The "Fire A Round" state
 	# This tweens the gun body back 32 units to simulate a "kickback" effect,
@@ -73,9 +69,8 @@ func _ready() -> void:
 	# reduces the "loaded rounds" variable
 	# Then transitions back to idle after a 'firing interval' amount of time has elapsed.
 	gun_state_machine.add_state(State.new("fire_a_round")
-	.set_timeout(firing_interval)
-	.add_tween(false, self, func(tween: Tween):
-		tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), .01)
+	.add_tween(true, self, func(tween: Tween):
+		tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), firing_interval + randf_range(-.01, 0.01))
 	)
 	.set_on_enter(func(state_stack):
 		audio_player.stream = gunshot_sound
@@ -107,7 +102,7 @@ func _ready() -> void:
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	gun_state_machine.run(delta, 1.0)
+	gun_state_machine.run(1.0)
 	
 	self.debug_label.text = "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state_id())
 	self.debug_label.text += "\n"
