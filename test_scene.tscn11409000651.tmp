@@ -8,12 +8,12 @@
 [node name="test_scene" type="Node2D"]
 
 [node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label")]
-position = Vector2(1041, 107)
+position = Vector2(718, 461)
 texture = ExtResource("1_k0vpn")
 script = ExtResource("2_cet31")
 pos_a = NodePath("../pos_a")
 pos_b = NodePath("../pos_b")
-debug_label = NodePath("../Panel/VBoxContainer/Label")
+debug_label = NodePath("../Label")
 
 [node name="Sprite2D" type="Sprite2D" parent="guy"]
 position = Vector2(64, 33)
@@ -27,26 +27,7 @@ position = Vector2(956, 513)
 [node name="pos_b" type="Node2D" parent="."]
 position = Vector2(216, 131)
 
-[node name="Panel" type="Panel" parent="."]
-offset_right = 256.0
-offset_bottom = 256.0
-
-[node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-
-[node name="HSlider" type="HSlider" parent="Panel/VBoxContainer"]
-layout_mode = 2
-max_value = 25.0
-step = 0.01
-value = 1.0
-
-[node name="Label" type="Label" parent="Panel/VBoxContainer"]
-layout_mode = 2
+[node name="Label" type="Label" parent="."]
+offset_right = 40.0
+offset_bottom = 23.0
 text = "eeeee"
-
-[connection signal="value_changed" from="Panel/VBoxContainer/HSlider" to="guy" method="_on_h_slider_value_changed"]

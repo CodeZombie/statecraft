@@ -16,13 +16,13 @@ class DynamicTween:
 	var scene_node: Node
 	var tween: Tween
 	var tween_definition_method: Callable
-	var terminal: bool
+	var on_finished: Variant
 	var _finished: bool = false
 
-	func _init(tween_definition_method: Callable, terminal: bool, scene_node: Node):
+	func _init(scene_node: Node, tween_definition_method: Callable, on_finished: Variant = null):
 		self.scene_node = scene_node
 		self.tween_definition_method = tween_definition_method
-		self.terminal = terminal
+		self.on_finished = on_finished
 
 	func start():
 		if self.tween:
@@ -33,9 +33,11 @@ class DynamicTween:
 		self.tween.play()
 		self.tween.pause()
 		
-	func step(delta):
-		if self.tween:
-			self._finished = not self.tween.custom_step(delta)
+	func process(delta, speed_scale):
+		if self.tween and not self.is_finished():
+			self._finished = not self.tween.custom_step(delta * speed_scale)
+			if self.is_finished() and self.on_finished:
+				return self.on_finished.call()
 	
 	func is_finished() -> bool:
 		return self._finished
@@ -44,7 +46,30 @@ class DynamicTween:
 		if self.tween:
 			self.tween.kill()
 			self.tween = null
+
+class DynamicTimer:
+	var duration: float
+	var elapsed: float = 0.0
+	var on_finished: Callable
+	
+	func _init(duration: int, on_finished: Callable):
+		self.duration = duration
+		self.on_finished = on_finished
+	
+	func reset():
+		self.elapsed = 0.0
+	
+	func process(delta: float, speed_scale: float):
+		self.elapsed += delta * speed_scale
+		if self.elapsed >= self.duration:
+			return self.on_finished.call()
 		
+	func copy() -> DynamicTimer:
+		return DynamicTimer.new(self.duration, self.on_finished)
+		
+	func is_done() -> bool:
+		return elapsed == -1
+
 	
 #class TweenWrapper:
 	#var tween: Tween
@@ -62,16 +87,15 @@ class DynamicTween:
 		#return self.has_finished
 		
 var id: String
-var on_enter_method
-var on_update_method
-var on_exit_method
+var on_enter_method = null
+var on_update_method = null
+var on_exit_method = null
 var skippable: bool
 var created_by: String
-var timeout_duration: float
+var dynamic_timers: Array[DynamicTimer] = []
 var dynamic_tweens: Array[DynamicTween] = []
-var custom_properties: Dictionary = {}
 var _status: Status = Status.READY
-var elapsed_runtime: float
+var _props: Dictionary = {}
 
 func copy(new_state_id: String):
 	var copy_state = State.new(new_state_id)
@@ -79,33 +103,32 @@ func copy(new_state_id: String):
 	copy_state.on_update_method = self.on_update_method
 	copy_state.on_exit_method = self.on_exit_method
 	copy_state.skippable = self.skippable
-	copy_state.timeout_duration = self.timeout_duration
+	for dynamic_timer in self.dynamic_timers:
+		copy_state.add_timer(dynamic_timer.duration, dynamic_timer.on_finished)
 	for dynamic_tween in self.dynamic_tweens:
-		copy_state.add_tween(dynamic_tween.terminal, dynamic_tween.scene_node, dynamic_tween.tween_definition_method)
+		copy_state.add_tween(dynamic_tween.scene_node, dynamic_tween.tween_definition_method, dynamic_tween.on_finished)
 	return copy_state
 
-func exit():
-	self._status = Status.WAITING_TO_EXIT
+#func exit():
+	#self._status = Status.WAITING_TO_EXIT
 
 func run( speed_scale: float, loop: bool = false):
 	if self._status == Status.READY:
-		self._on_enter([])
+		self.execute_on_enter_event()
 		
-	elif self._status == Status.RUNNING:
-		var command = self._on_update([], Engine.get_main_loop().root.get_process_delta_time(), speed_scale)
-		
-	elif self._status == Status.WAITING_TO_EXIT:
-		self._on_exit([])
-		if loop:
-			self._status = Status.READY
-		else:
-			self._status = Status.EXITED
+	else:
+		self.execute_on_update_event(Engine.get_main_loop().root.get_process_delta_time(), speed_scale)
+		#
+	#elif self._status == Status.WAITING_TO_EXIT:
+		#self._on_exit([])
+		#if loop:
+			#self._status = Status.READY
+		#else:
+			#self._status = Status.EXITED
 		
 func _init(id: String, skippable: bool = false):
-	self.on_enter_method = null
-	self.on_update_method = null
-	self.on_exit_method = null
 	self.id = id
+	self.skippable = skippable
 
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
@@ -115,78 +138,88 @@ func set_on_enter(on_enter_method: Callable):
 	return self
 
 func set_on_update(closure_method: Callable):
-
 	self.on_update_method = closure_method
 	return self
 
 func set_on_exit(closure_method: Callable):
-	var x = func():
-		return closure_method
-	self.on_exit_method = x.call()
+	self.on_exit_method = closure_method
 	return self
 
-func set_timeout(duration: float):
-	self.timeout_duration = duration
+func add_timer(duration: float, on_finished: Callable):
+	self.dynamic_timers.append(DynamicTimer.new(duration, on_finished))
 	return self
 
-#func attach_tween(tween: Tween, terminal: bool = true):
-	#tween.stop() # In godot, tweens auto-play upon creation. We don't want that.
-	#self.wrapped_tweens.append(TweenWrapper.new(tween, terminal))
-	#return self
-	#
-func add_tween(terminal: bool, scene_node: Node, tween_definition_method: Callable):
-	self.dynamic_tweens.append(DynamicTween.new(tween_definition_method, terminal, scene_node))
+
+func add_tween(scene_node: Node, tween_definition_method: Callable, on_finished: Variant = null):
+	self.dynamic_tweens.append(DynamicTween.new(scene_node, tween_definition_method, on_finished))
 	return self
-		
-func _on_enter(state_stack):
-	print(self.id + "._on_enter()")
-	self.custom_properties = {}
-
-	self.elapsed_runtime = 0.0
-
-	if self.on_enter_method and is_method_still_bound(self.on_enter_method):
-		self.on_enter_method.call([self] + state_stack)
-
+	
+func execute_on_enter_event() -> Variant:
+	print(self.id + ".execute_on_enter_event()")
+	
+	self._props = {} # Clear props
+	
+	self._status = Status.RUNNING
+	
 	for dynamic_tween in self.dynamic_tweens:
 		dynamic_tween.start()
 		
-	self._status = Status.RUNNING
-
-func _on_update(state_stack, delta: float, speed_scale: float = 1):
+	for dynamic_timer in self.dynamic_timers:
+		dynamic_timer.reset()
+		
+	if self.on_enter_method and is_method_still_bound(self.on_enter_method):
+		if self.on_enter_method.get_argument_count() > 0:
+			return self.on_enter_method.call(self._props)
+		else:
+			return self.on_enter_method.call()
 	
-	# If there's a timeout, check to see if it has elapsed, exiting if it has.
-	self.elapsed_runtime += delta
-	if self.timeout_duration and self.elapsed_runtime >= self.timeout_duration / speed_scale:
-		return self.exit()
-		
-	# Check to see if all terminal tweens have ended. if they have, exit the event.
-	var has_any_terminal_tweens = len(self.dynamic_tweens.filter(func(dt): return dt.terminal)) > 0
-	var have_all_terminal_tweens_finished = true
-	for dynamic_tween in self.dynamic_tweens:
-		#wrapped_tween.tween.set_speed_scale(speed_scale)
-		dynamic_tween.step(delta * speed_scale)
-		if dynamic_tween.terminal and not dynamic_tween.is_finished():
-			have_all_terminal_tweens_finished = false
-	if has_any_terminal_tweens and have_all_terminal_tweens_finished:
-		return self.exit()
-		
-	if self._status == Status.RUNNING:
-		if self.on_update_method and is_method_still_bound(self.on_update_method):
-			self.on_update_method.call([self] + state_stack, delta * speed_scale)
+	return null
 
-func _on_exit(state_stack, allow_repeat: bool = false):
-	print(self.id + "._on_exit()")
+func execute_on_update_event(delta: float, speed_scale: float = 1) -> Variant:
+	for dynamic_timer in self.dynamic_timers:
+		var dynamic_timer_return_value: Variant = dynamic_timer.process(delta, speed_scale)
+		if dynamic_timer_return_value:
+			return dynamic_timer_return_value
+
+	for dynamic_tween in self.dynamic_tweens:
+		var dynamic_tween_return_value: Variant = dynamic_tween.process(delta, speed_scale)
+		if dynamic_tween_return_value:
+			return dynamic_tween_return_value
+		
+	if self.on_update_method and is_method_still_bound(self.on_update_method):
+		var update_method_return_value: Variant
+		if self.on_update_method.get_argument_count() == 2:
+			update_method_return_value = self.on_update_method.call(self._props, delta * speed_scale)
+		else:
+			update_method_return_value = self.on_update_method.call(delta * speed_scale)
+		if update_method_return_value:
+			return update_method_return_value
+			
+	return null
+
+func execute_on_exit_event(allow_repeat: bool = false) -> Variant:
+	print(self.id + ".execute_on_exit_event()")
+	
+	self._status = Status.READY
+	
 	for dynamic_tween in dynamic_tweens:
 		dynamic_tween.kill()
+		
 	if self.on_exit_method and is_method_still_bound(self.on_exit_method):
-		self.on_exit_method.call([self] + state_stack)
-	self._status = Status.READY
+		if self.on_exit_method.get_argument_count() == 1:
+			return self.on_exit_method.call(self._props)
+		else:
+			return self.on_exit_method.call()
+		
+	return null
 
-func process_immediately():
-	if self.skippable:
-		return
-	while self._status != Status.WAITING_TO_EXIT:
-		self._on_update(1, 1)
+# TODO: move this logic into the containers (StateQueue/StateMachine)
+# maybe we add a "instantly_process_next_states(state_count: int)"
+#func process_immediately():
+	#if self.skippable:
+		#return
+	#while self._status != Status.WAITING_TO_EXIT:
+		#self.execute_on_update_event(1, 1)
 
 func is_method_still_bound(method: Callable) -> bool:
 	if method.get_object() == null:

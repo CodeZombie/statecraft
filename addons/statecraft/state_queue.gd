@@ -1,18 +1,51 @@
 class_name StateQueue extends State
 
+class TransitionToNextState extends Message:
+	func _process(state_queue: StateQueue):
+		var old_state_on_exit_return_value: Variant = state_queue._get_current_state().execute_on_exit_event()
+		if old_state_on_exit_return_value:
+			return old_state_on_exit_return_value
+			
+		if state_queue.current_state_index < len(state_queue.child_states) - 1:
+			state_queue.current_state_index += 1
+			return state_queue._get_current_state().execute_on_enter_event()
+		else:
+			if state_queue.on_finished_method:
+				return state_queue.on_finished_method.call()
+			else:
+				# Restart the StateQueue
+				return state_queue.execute_on_enter_event()
+	
+class RestartCurrentState extends Message:
+	pass
+
 var child_states: Array[State] = []
 var initial_state_index: int = 0
 var current_state_index: int
-var next_state_id: int = 0
+#var next_state_id: int = 0
+var on_finished_method: Variant = null
 
-func _on_enter(state_stack):
+func execute_on_enter_event() -> Variant:
 	self.current_state_index = self.initial_state_index
-	super(state_stack)
+	self._get_current_state().execute_on_enter_event()
+	return super()
 
-func add_state(event: State):
-	self.child_states.push_back(event)
+func add_state(state: State):
+	for child_state in self.child_states:
+		if child_state.id == state.id:
+			push_error("StateCraft Error: State with ID \"{0}\" already present in State Container \"{1}\"".format({0: state.id, 1: self.id}))
+	self.child_states.push_back(state)
 	return self
 	
+func set_on_finished(on_finished_method: Callable) -> StateQueue:
+	self.on_enter_method = on_enter_method
+	return self
+	
+func execute_on_finished_event() -> Variant:
+	if self.on_finished_method:
+		return self.on_finished_method.call()
+	return null
+		
 func get_state(state_id: String) -> State:
 	return self.child_states[self.get_child_state_index_by_id(state_id)]
 	
@@ -34,38 +67,38 @@ func get_child_state_index_by_id(state_id: String):
 func _get_current_state() -> State:
 	return self.child_states[self.current_state_index]
 	
-func transition_to(state_id: String):
-	self._get_current_state().exit()
-	self.next_state_id = get_child_state_index_by_id(state_id)
+#func transition_to(state_id: String):
+	#self._get_current_state().exit()
+	#self.next_state_id = get_child_state_index_by_id(state_id)
 
 func skip_all_skippable_states():
 	self.queue = self.queue.filter(func(event): return not event.skippable)
 	for state_queue in self.queue.filter(func(event): return event is StateQueue):
 		state_queue.skip_all_skippable_events()
 
-func _on_child_state_exited():
-	if self.current_state_index < len(self.child_states) - 1:
-		self.next_state_id = self.current_state_index + 1
-	else:
-		self.exit()
+#func _on_child_state_exited():
+	#if self.current_state_index < len(self.child_states) - 1:
+		#self.next_state_id = self.current_state_index + 1
+	##else:
+		##self.exit()
 
-func _on_update(state_stack, delta: float, speed_scale: float = 1.0):
-	super(state_stack, delta, speed_scale)
-	
-	# If the current state has ended, transition to the next one.
-	if self._get_current_state()._status == Status.WAITING_TO_EXIT:
-		self._get_current_state()._on_exit([self] + state_stack)
-		self._on_child_state_exited()
-		self.current_state_index = self.next_state_id
+func execute_on_update_event(delta: float, speed_scale: float = 1.0):
+	super(delta, speed_scale)
 		
-	elif self._get_current_state()._status == Status.READY:
-		self._get_current_state()._on_enter([self] + state_stack)
+	var current_state_on_update_return_value: Variant = self._get_current_state().execute_on_update_event(delta, speed_scale)
+	if current_state_on_update_return_value:
+		return self._handle_message(current_state_on_update_return_value)
 		
-	elif self._get_current_state()._status == Status.RUNNING:
-		self.child_states[self.current_state_index]._on_update([self] + state_stack, delta, speed_scale)
-
 func clear():
 	self.queue.clear()
+	
+func _handle_message(message: Message) -> Variant:
+	# Checks to see if a message is targetting this node.
+	# If it is, execute the message, returning anything it returns.
+	# if it isn't, return the message so that it can be handled by the parent State.
+	if message.recipient_state_id == null or message.recipient_state_id == self.id:
+		return message._process(self)
+	return message
 	
 func get_debug_string() -> String:
 	var s: String = "\n" + self.id + ": " + self.get_status_string()
