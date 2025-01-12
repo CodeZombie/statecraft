@@ -10,16 +10,14 @@ func move_to_origin():
 	self.position = Vector2(0, 0)
 
 func _ready() -> void:
-	state_queue.add_state(State.new("move_to_pos_a")
-	#.set_on_enter(func(): self.move_to_origin())
-	.set_on_update(func(_delta):
+	state_queue.add_state(State.new(
+		"move_to_pos_a"
+	).set_on_update(func(_delta):
 		self.position = lerp(self.position, pos_a.position, speed * _delta)
 		if self.position.distance_to(pos_a.position) < 10:
-			return StateQueue.TransitionToNextState.new("movement_state_queue")
-	)
-	.add_tween(self, 
-		func(tween):
-			tween.tween_property(self, "scale", Vector2(2, 2), 0.5)
+			return StateQueue.transitionToNextState()
+	).add_tween(self, func(tween):
+		tween.tween_property(self, "scale", Vector2(2, 2), 0.5)
 	))
 	
 	state_queue.add_state($Sprite2D.get_rotate_state())
@@ -29,20 +27,17 @@ func _ready() -> void:
 		func(tween):
 			tween.tween_property(self, "rotation", self.rotation + PI/2, 0.5),
 		func():
-			return StateQueue.TransitionToNextState.new("movement_state_queue")
+			return StateQueue.transitionToNextState()
 	))
 	
 	state_queue.add_state(State.new("move_to_pos_b")
 	.set_on_update(func(_delta):
-		#self.position += self.position.direction_to(pos_b.position) * speed * _delta
 		self.position = lerp(self.position, pos_b.position, speed * _delta)
 		if self.position.distance_to(pos_b.position) < 10:
-			return StateQueue.TransitionToNextState.new()
+			return StateQueue.transitionToNextState()
 	).add_tween(self, 
 		func(tween):
 			tween.tween_property(self, "scale", Vector2(1, 1), 0.5)
-		#func():
-			#return StateQueue.TransitionToNextState.new("movement_state_queue")
 	))
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.

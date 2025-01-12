@@ -25,6 +25,12 @@ var current_state_index: int
 #var next_state_id: int = 0
 var on_finished_method: Variant = null
 
+static func transitionToNextState(recipient_state_id: Variant = null) -> TransitionToNextState:
+	return TransitionToNextState.new(recipient_state_id)
+
+static func restartCurrentState(recipient_state_id: Variant = null) -> RestartCurrentState:
+	return RestartCurrentState.new(recipient_state_id)
+
 func execute_on_enter_event() -> Variant:
 	self.current_state_index = self.initial_state_index
 	self._get_current_state().execute_on_enter_event()
