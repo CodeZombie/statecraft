@@ -1,113 +1,103 @@
-class_name StateQueue extends State
+class_name StateQueue extends StateRunner
 
-class TransitionToNextState extends Message:
-	func _process(state_queue: StateQueue):
-		var old_state_on_exit_return_value: Variant = state_queue._get_current_state().execute_on_exit_event()
-		if old_state_on_exit_return_value:
-			return old_state_on_exit_return_value
-			
-		if state_queue.current_state_index < len(state_queue.child_states) - 1:
-			state_queue.current_state_index += 1
-			return state_queue._get_current_state().execute_on_enter_event()
-		else:
-			if state_queue.on_finished_method:
-				return state_queue.on_finished_method.call()
-			else:
-				# Restart the StateQueue
-				return state_queue.execute_on_enter_event()
+#class TransitionToNextState extends Message:
+	#func _to_string() -> String:
+		#return "TransitionToNextState"
+		#
+	#func _process(state_queue: StateQueue):
+		#var old_state_on_exit_return_value: Variant = state_queue._get_current_state().execute_on_exit_event()
+		#if old_state_on_exit_return_value:
+			#return old_state_on_exit_return_value
+			#
+		#if state_queue.current_state_index < len(state_queue.child_states) - 1:
+			#state_queue.current_state_index += 1
+			#return state_queue._get_current_state().execute_on_enter_event()
+		#else:
+			#if state_queue.on_finished_method:
+				#return state_queue.on_finished_method.call()
+			#else:
+				## Restart the StateQueue
+				#return state_queue.execute_on_enter_event()
+
+#var on_finished_method: Variant = null
+
+func _init(id: String, skippable: bool = false):
+	super(id, skippable)
 	
-class RestartCurrentState extends Message:
-	pass
+#func transition_on(state_id: String, condition_id: Variant) -> StateRunner:
+	#self.on_condition_met(state_id, condition_id, self.transition_to_next_state.bind())
+	#return self
 
-var child_states: Array[State] = []
-var initial_state_index: int = 0
-var current_state_index: int
-#var next_state_id: int = 0
-var on_finished_method: Variant = null
+func advance_on(from: String, condition: Variant):
+	self.transition_on(from, self.get_next_state_id(), condition)
 
-static func transitionToNextState(recipient_state_id: Variant = null) -> TransitionToNextState:
-	return TransitionToNextState.new(recipient_state_id)
+#func transition_from(state_id: String) -> StateEvent:
+	#if state_id not in self.state_events.keys():
+		#self.state_events[state_id] = []
+	#var state_event = StateEvent.new()
+	#state_event.event = func(state_queue: StateQueue): state_queue.transition_to(self.get_next_state_id())
+	#self.state_events[state_id].append(state_event)
+	#return state_event
 
-static func restartCurrentState(recipient_state_id: Variant = null) -> RestartCurrentState:
-	return RestartCurrentState.new(recipient_state_id)
-
-func execute_on_enter_event() -> Variant:
-	self.current_state_index = self.initial_state_index
-	self._get_current_state().execute_on_enter_event()
-	return super()
-
-func add_state(state: State):
-	for child_state in self.child_states:
-		if child_state.id == state.id:
-			push_error("StateCraft Error: State with ID \"{0}\" already present in State Container \"{1}\"".format({0: state.id, 1: self.id}))
-	self.child_states.push_back(state)
-	return self
+func get_next_state_id() -> String:
+	if self.current_state_index + 1 == len(self.child_states):
+		return self.child_states[0].id
+	return self.child_states[self.current_state_index + 1].id
 	
-func set_on_finished(on_finished_method: Callable) -> StateQueue:
-	self.on_enter_method = on_enter_method
-	return self
-	
-func execute_on_finished_event() -> Variant:
-	if self.on_finished_method:
-		return self.on_finished_method.call()
-	return null
-		
-func get_state(state_id: String) -> State:
-	return self.child_states[self.get_child_state_index_by_id(state_id)]
+
+#func add_advance(from_state_id: String, condition: Variant) -> StateRunner:
+	#if from_state_id not in self.transitions.keys():
+		#self.transitions[from_state_id] = []
+	#if condition is String:
+		#condition = self.get_callable_from_condition_path(condition)
+	#self.transitions[from_state_id].append(
+		#StateEvent.new(
+			#func(state):
+				#state.transition_to(state.get_next_state_id()), 
+			#condition))
+	#return self
+
+#func transition_to_next_state_on(from_state_id: String, condition: Callable) -> StateRunner:
+	#self.transition_conditions.append(TransitionCondition.new(
+		#from_state_id, 
+		#func(): return to_state_id,
+		#condition))
+	#return self
+
+#func transition_to_next_state() -> void:
+	#self.get_current_state().exit()
+	#if self.current_state_index < len(self.child_states) - 1:
+		#self.current_state_index += 1
+		#self.get_current_state().enter()
+	#else:
+		#self.restart()
+
+func enter():
+	self.current_state_index = 0
+	super()
 	
 func process_immediately():
 	self.skip_all_skippable_states()
 	for event in self.queue:
 		event.process_immediately()
 	self.queue.clear()
-
-func get_current_state_id():
-	return self.child_states[self.current_state_index].id
-
-func get_child_state_index_by_id(state_id: String):
-	for i in range(len(self.child_states)):
-		if self.child_states[i].id == state_id:
-			return i
-	push_error("Statecraft Error: No child state \"", state_id, "\" could be found within \"", self.id, "\"")
 	
-func _get_current_state() -> State:
-	return self.child_states[self.current_state_index]
-	
-#func transition_to(state_id: String):
-	#self._get_current_state().exit()
-	#self.next_state_id = get_child_state_index_by_id(state_id)
-
 func skip_all_skippable_states():
 	self.queue = self.queue.filter(func(event): return not event.skippable)
 	for state_queue in self.queue.filter(func(event): return event is StateQueue):
 		state_queue.skip_all_skippable_events()
 
-#func _on_child_state_exited():
-	#if self.current_state_index < len(self.child_states) - 1:
-		#self.next_state_id = self.current_state_index + 1
-	##else:
-		##self.exit()
-
-func execute_on_update_event(delta: float, speed_scale: float = 1.0):
+func update(delta: float, speed_scale: float = 1.0):
 	super(delta, speed_scale)
-		
-	var current_state_on_update_return_value: Variant = self._get_current_state().execute_on_update_event(delta, speed_scale)
-	if current_state_on_update_return_value:
-		return self._handle_message(current_state_on_update_return_value)
-		
+	var current_state = self.get_current_state()
+	if not current_state:
+		return null
+	current_state.update(delta, speed_scale)
+	
+	#if current_state.id in self.state_events.keys():
+		#for state_event in self.state_events[current_state.id]:
+			#if state_event.is_condition_met(self):
+				#state_event.execute_event(self)
+	
 func clear():
 	self.queue.clear()
-	
-func _handle_message(message: Message) -> Variant:
-	# Checks to see if a message is targetting this node.
-	# If it is, execute the message, returning anything it returns.
-	# if it isn't, return the message so that it can be handled by the parent State.
-	if message.recipient_state_id == null or message.recipient_state_id == self.id:
-		return message._process(self)
-	return message
-	
-func get_debug_string() -> String:
-	var s: String = "\n" + self.id + ": " + self.get_status_string()
-	for child_state in self.child_states:
-		s += "\n   " + child_state.get_debug_string()
-	return s

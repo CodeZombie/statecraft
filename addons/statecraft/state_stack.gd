@@ -1,1 +1,1 @@
-class_name StateStack extends State
+class_name StateStack extends StateRunner

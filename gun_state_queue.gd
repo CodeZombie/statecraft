@@ -13,100 +13,80 @@ var trigger_pressed = false
 var magazine_pressed = false
 var magazine_capacity = 40
 var loaded_rounds = magazine_capacity
-@export var firing_interval = 0.05
+@export var firing_interval = 0.1
 
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	self.gunbody_start_position = $GunBody.position
 	
 	# Always running while the state machine is running...
-	gun_state_machine.set_on_update(func(state_stack, delta):
-		$GunBody.position += $GunBody.position.direction_to(self.gunbody_start_position) * $GunBody.position.distance_to(self.gunbody_start_position) * 20 * delta)
+	gun_state_machine.add_update_method(func(_delta):
+		$GunBody.position += $GunBody.position.direction_to(self.gunbody_start_position) * $GunBody.position.distance_to(self.gunbody_start_position) * 20 * _delta)
 	
-	# Define the "Idle" State.
-	# THis state checks for user interaction and transitions to a different state to perform the desired action.
-	gun_state_machine.add_state(State.new("idle")
-	.set_on_update(func(state_stack, delta):
-		if self.trigger_pressed:
-			if loaded_rounds > 0:
-				if randf() > 0.9:
-					gun_state_machine.transition_to("jammed")
-				else:
-					gun_state_machine.transition_to("fire_a_round")
-			else:
-				gun_state_machine.transition_to("click")
-		if self.magazine_pressed:
-			gun_state_machine.transition_to("reload")))
+	gun_state_machine.add_state(State.new("idle"))
+	gun_state_machine.transition_on("idle", "trigger_pressed", self.is_trigger_pressed.bind())
+	gun_state_machine.transition_on("idle", "reload", self.is_magazine_pressed.bind())
 	
-	gun_state_machine.set_initial_state("idle")
+	gun_state_machine.add_state(State.new("trigger_pressed"))
+	gun_state_machine.transition_on("trigger_pressed", "magazine_empty_click", func(): return self.loaded_rounds == 0)
+	gun_state_machine.transition_dynamic("trigger_pressed", func(): return "jammed" if randf() > 0.9 else "fire_round")
 	
-	# Define the "Click" state.
-	# This just plays a click sound, waits a short amount of time, then transitions back to Idle.
-	gun_state_machine.add_state(State.new("click")
-	.set_on_enter(func(state_stack):
+	var magazine_empty_click_state: State = gun_state_machine.add_state(TimerState.new("magazine_empty_click", self.firing_interval))
+	magazine_empty_click_state.add_enter_method(func():
 		audio_player.stream = click_sound
 		audio_player.play())
-	.set_timeout(firing_interval)
-	.set_on_exit(func(state_stack):
-		return gun_state_machine.transition_to("idle")))
-		
-	gun_state_machine.add_state(StateMachine.new("jammed")
-	.add_state(State.new("idle")
-	.set_on_update(func(state_stack, delta):
-		if self.trigger_pressed:
-			return state_stack[1].transition_to("click")
-		if self.magazine_pressed:
-			return gun_state_machine.transition_to("reload")))
-	.add_state(gun_state_machine.get_state("click").copy("click")
-		.set_on_exit(func(state_stack):
-			return state_stack[1].transition_to("idle")
-			)
-		))
+	gun_state_machine.transition_on("magazine_empty_click", "idle", "magazine_empty_click.timer_elapsed")
 	
-	# The "Fire A Round" state
-	# This tweens the gun body back 32 units to simulate a "kickback" effect,
-	# plays a gunshot sound,
-	# reduces the "loaded rounds" variable
-	# Then transitions back to idle after a 'firing interval' amount of time has elapsed.
-	gun_state_machine.add_state(State.new("fire_a_round")
-	.add_tween(true, self, func(tween: Tween):
-		tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), firing_interval + randf_range(-.01, 0.01))
-	)
-	.set_on_enter(func(state_stack):
+	var jammed_state_machine: StateMachine = gun_state_machine.add_state(StateMachine.new("jammed"))
+	jammed_state_machine.add_state(State.new("idle"))
+	jammed_state_machine.transition_on("idle", "click", self.is_trigger_pressed.bind())
+	jammed_state_machine.transition_on("idle", "clear_jam", self.is_magazine_pressed.bind())
+	jammed_state_machine.add_state(TimerState.new("click", firing_interval)) #magazine_empty_click_state.copy
+	jammed_state_machine.transition_on("click", "idle", "click.timer_elapsed")
+	jammed_state_machine.add_state(State.new("clear_jam")).add_enter_method(func(): gun_state_machine.transition_to("reload"))
+	
+	var fire_round_state: TweenState = gun_state_machine.add_state(
+		TweenState.new(
+			"fire_round", 
+			self, 
+			func(tween: Tween):
+				tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), firing_interval + randf_range(-.01, 0.01))
+				))
+	fire_round_state.add_enter_method(func():
 		audio_player.stream = gunshot_sound
 		audio_player.pitch_scale = randf_range(1.2, 1.4)
 		audio_player.play()
-		self.loaded_rounds -= 1
-	)
-	.set_on_exit(func(state_stack):
-		gun_state_machine.transition_to("idle")
-	))
+		self.loaded_rounds -= 1)
+	gun_state_machine.transition_on("fire_round", "idle", "fire_round.tween_finished")
 	
-	# The Reload state.
-	# This is a StateQueue which plays two states sequentially.
-	# The first state
-	gun_state_machine.add_state(StateQueue.new("reload")
-	.add_state(State.new("mag_out")
-	.add_tween(true, self, func(tween: Tween):
-		tween.tween_property($GunBody/Magazine, "position", Vector2(89, 85), .5))
-	.set_on_enter(func(state_stack):
+	var reload_state: StateQueue = gun_state_machine.add_state(StateQueue.new("reload"))
+	var mag_out_state: TweenState = reload_state.add_state(TweenState.new("mag_out", self, func(tween: Tween): 
+		tween.tween_property($GunBody/Magazine, "position", Vector2(89, 85), .5)))
+	mag_out_state.add_enter_method(func():
 		audio_player.stream = reload_sound
-		audio_player.play()))
+		audio_player.play())
+	reload_state.transition_on("mag_out", "mag_in", "mag_out.tween_finished")
+	reload_state.add_state(TweenState.new("mag_in", self, func(tween: Tween):
+		tween.tween_property($GunBody/Magazine, "position", Vector2(89, 45), .5)))
+	reload_state.on("mag_in", "mag_in.tween_finished", gun_state_machine.transition_to.bind("idle"))
+	reload_state.add_exit_method(func(): self.loaded_rounds = self.magazine_capacity)
+	
 		
-	.add_state(State.new("mag_in")
-	.add_tween(true, self, func(tween: Tween):
-		tween.tween_property($GunBody/Magazine, "position", Vector2(89, 45), .5))
-	.set_on_exit(func(state_stack):
-		self.loaded_rounds = self.magazine_capacity
-		return gun_state_machine.transition_to("idle"))))
+		
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	gun_state_machine.run(1.0)
 	
-	self.debug_label.text = "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state_id())
+	self.debug_label.text = "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state().id)
 	self.debug_label.text += "\n"
-	self.debug_label.text += self.gun_state_machine.get_debug_string()
+	self.debug_label.text += str(self.gun_state_machine)
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		if not event.pressed:
+			self.magazine_pressed = false
+			self.trigger_pressed = false
 
 func _on_magazine_area_input_event(viewport: Node, event: InputEvent, shape_idx: int) -> void:
 	if event is InputEventMouseButton:
@@ -116,3 +96,10 @@ func _on_magazine_area_input_event(viewport: Node, event: InputEvent, shape_idx:
 func _on_trigger_area_input_event(viewport: Node, event: InputEvent, shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		self.trigger_pressed = (event as InputEventMouseButton).pressed
+
+
+func is_trigger_pressed() -> bool:
+	return self.trigger_pressed
+	
+func is_magazine_pressed() -> bool:
+	return self.magazine_pressed
