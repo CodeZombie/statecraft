@@ -44,6 +44,11 @@ func _init(id: String, skippable: bool = false):
 		var current_state = self.get_current_state()
 		if current_state:
 			current_state.enter())
+			
+	self.add_exit_method(func():
+		var current_state = self.get_current_state()
+		if current_state and current_state._status == Status.RUNNING:
+			current_state.exit())
 
 func update(delta: float, speed_scale: float = 1):
 	super(delta, speed_scale)

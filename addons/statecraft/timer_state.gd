@@ -16,6 +16,7 @@ func _init(id: String, duration: float, skippable: bool = false):
 	)
 	
 	self.add_update_method(func(_delta):
+		# TODO: Validate that this actually elapses for the desired `duration`
 		self._elapsed += _delta
 		if self._elapsed >= self.duration:
 			self.emit("timer_elapsed")
