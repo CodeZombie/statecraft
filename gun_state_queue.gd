@@ -24,12 +24,12 @@ func _ready() -> void:
 		$GunBody.position += $GunBody.position.direction_to(self.gunbody_start_position) * $GunBody.position.distance_to(self.gunbody_start_position) * 20 * _delta)
 	
 	gun_state_machine.add_state(State.new("idle"))
-	gun_state_machine.transition_on("idle", "trigger_pressed", self.is_trigger_pressed.bind())
 	gun_state_machine.transition_on("idle", "reload", self.is_magazine_pressed.bind())
-	
-	gun_state_machine.add_state(State.new("trigger_pressed"))
-	gun_state_machine.transition_on("trigger_pressed", "magazine_empty_click", func(): return self.loaded_rounds == 0)
-	gun_state_machine.transition_dynamic("trigger_pressed", func(): return "jammed" if randf() > 0.9 else "fire_round")
+	gun_state_machine.transition_dynamic("idle", func():
+		if self.trigger_pressed:
+			if self.loaded_rounds == 0:
+				return "magazine_empty_click"
+			return "jammed" if randf() > 0.9 else "fire_round")
 	
 	var magazine_empty_click_state: State = gun_state_machine.add_state(TimerState.new("magazine_empty_click", self.firing_interval))
 	magazine_empty_click_state.add_enter_method(func():
@@ -37,26 +37,21 @@ func _ready() -> void:
 		audio_player.play())
 	gun_state_machine.transition_on("magazine_empty_click", "idle", "magazine_empty_click.timer_elapsed")
 	
-	var jammed_state_machine: StateMachine = gun_state_machine.add_state(StateMachine.new("jammed"))
+	var jammed_state: StateMachine = StateMachine.new("jammed")
+	var jammed_state_machine: StateMachine = gun_state_machine.add_state(jammed_state)
+	print(gun_state_machine.id)
+	print(jammed_state_machine.id)
 	jammed_state_machine.add_state(State.new("idle"))
 	jammed_state_machine.transition_on("idle", "click", self.is_trigger_pressed.bind())
 	jammed_state_machine.transition_on("idle", "clear_jam", self.is_magazine_pressed.bind())
 	jammed_state_machine.add_state(TimerState.new("click", firing_interval)) #magazine_empty_click_state.copy
 	jammed_state_machine.transition_on("click", "idle", "click.timer_elapsed")
-	jammed_state_machine.add_state(State.new("clear_jam")).add_enter_method(func(): gun_state_machine.transition_to("reload"))
+	jammed_state_machine.add_state(
+		State.new("clear_jam")\
+		.add_enter_method(func(): gun_state_machine.transition_to("reload"))
+	)
 	
-	var fire_round_state: TweenState = gun_state_machine.add_state(
-		TweenState.new(
-			"fire_round", 
-			self, 
-			func(tween: Tween):
-				tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), firing_interval + randf_range(-.01, 0.01))
-				))
-	fire_round_state.add_enter_method(func():
-		audio_player.stream = gunshot_sound
-		audio_player.pitch_scale = randf_range(1.2, 1.4)
-		audio_player.play()
-		self.loaded_rounds -= 1)
+	gun_state_machine.add_state(self.fire_round_state("fire_round"))
 	gun_state_machine.transition_on("fire_round", "idle", "fire_round.tween_finished")
 	
 	var reload_state: StateQueue = gun_state_machine.add_state(StateQueue.new("reload"))
@@ -80,7 +75,7 @@ func _process(delta: float) -> void:
 	
 	self.debug_label.text = "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state().id)
 	self.debug_label.text += "\n"
-	self.debug_label.text += str(self.gun_state_machine)
+	self.debug_label.text += self.gun_state_machine.as_string()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -91,15 +86,23 @@ func _input(event: InputEvent) -> void:
 func _on_magazine_area_input_event(viewport: Node, event: InputEvent, shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		self.magazine_pressed = (event as InputEventMouseButton).pressed
-
-
+		
 func _on_trigger_area_input_event(viewport: Node, event: InputEvent, shape_idx: int) -> void:
 	if event is InputEventMouseButton:
 		self.trigger_pressed = (event as InputEventMouseButton).pressed
-
-
+	
 func is_trigger_pressed() -> bool:
 	return self.trigger_pressed
 	
 func is_magazine_pressed() -> bool:
 	return self.magazine_pressed
+	
+func fire_round_state(state_id: String = "fire_round") -> State:
+	var state: TweenState = TweenState.new(state_id, self, func(tween: Tween):
+		tween.tween_property($GunBody, "position", $GunBody.position - Vector2(32, 0), firing_interval + randf_range(-.01, 0.01)) )
+	state.add_enter_method(func():
+		audio_player.stream = gunshot_sound
+		audio_player.pitch_scale = randf_range(1.2, 1.4)
+		audio_player.play()
+		self.loaded_rounds -= 1)
+	return state

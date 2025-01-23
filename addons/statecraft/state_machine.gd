@@ -31,6 +31,6 @@ class_name StateMachine extends StateRunner
 	#})
 	#return self
 
-func set_initial_state(state_id: String):
-	self.initial_state_id = state_id
-	return self
+#func set_initial_state(state_id: String):
+	#self.initial_state_id = state_id
+	#return self

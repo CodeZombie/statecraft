@@ -267,8 +267,11 @@ func is_method_still_bound(method: Callable) -> bool:
 		return false
 	return true
 	
-func _to_string() -> String:
-	return self.id + ": " + self.get_status_string()
+func as_string(indent: int = 0) -> String:
+	var indent_string: String = ""
+	for i in range(indent):
+		indent_string += " "
+	return indent_string + self.id + ": " + self.get_status_string()
 
 func get_status_string() -> String:
 	return Status.keys()[self._status]

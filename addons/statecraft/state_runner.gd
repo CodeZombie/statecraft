@@ -30,7 +30,7 @@ class_name StateRunner extends State
 
 
 #var child_states: OrderedDictionary = OrderedDictionary.new()
-var child_states: Array[State] = []
+var child_states: Array[State]
 #var initial_state_id: String
 var current_state_index: int = 0
 #var state_events: Dictionary[String, Array] = {}
@@ -38,9 +38,11 @@ var transitions: Array[Callable] = []
 
 
 func _init(id: String, skippable: bool = false):
-	super(id, skippable)
+	
+	self.child_states = []
 	self.add_enter_method(func():
 		#self.current_state_index = self.get_child_state_index_by_id(self.initial_state_id)
+		self.current_state_index = 0
 		var current_state = self.get_current_state()
 		if current_state:
 			current_state.enter())
@@ -49,11 +51,13 @@ func _init(id: String, skippable: bool = false):
 		var current_state = self.get_current_state()
 		if current_state and current_state._status == Status.RUNNING:
 			current_state.exit())
+	super(id, skippable)
 
 func update(delta: float, speed_scale: float = 1):
 	super(delta, speed_scale)
-	
-	self.get_current_state().update(delta, speed_scale)
+	var current_state = self.get_current_state()
+	if current_state:
+		self.get_current_state().update(delta, speed_scale)
 	
 	for transition_callable in self.transitions:
 		transition_callable.call()
@@ -174,6 +178,7 @@ func transition_to(state_id: String):
 		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
 	self.get_current_state().enter()
 
+
 #func on_condition_met(state_id: String, condition_id: String, handler: Callable) -> StateRunner:
 	#if state_id not in self.condition_handlers.keys():
 		#self.condition_handlers[state_id] = {}
@@ -188,8 +193,11 @@ func get_state_index(state_id: String):
 			return i
 	return -1
 	
-func _to_string() -> String:
-	var s: String = "\n" + self.id + ": " + self.get_status_string() + " : " + str(len(self.child_states))
+func as_string(indent: int = 0) -> String:
+	var indent_string: String = ""
+	for i in range(indent):
+		indent_string += " "
+	var s: String = indent_string + self.id + ": " + self.get_status_string() + " : " + str(len(self.child_states))
 	for child_state in self.child_states:
-		s += "\n   " + child_state._to_string()
+		s += "\n" + child_state.as_string(indent + 4)
 	return s
