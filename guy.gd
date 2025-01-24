@@ -41,7 +41,7 @@ func _ready() -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	debug_label.text = state_queue.as_string()
-	state_queue.run(self.state_queue_speed, true)
+	state_queue.run(self.state_queue_speed)
 
 func _on_h_slider_value_changed(value: float) -> void:
 	self.state_queue_speed = value
