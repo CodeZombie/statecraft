@@ -4,13 +4,9 @@ var duration: float
 var _elapsed: float
 
 func _init(id: String, duration: float, skippable: bool = false):
-	self.id = id
+	super(id, skippable)
 	self.duration = duration
-	self.skippable = skippable
 
-	for call_dict in get_stack():
-		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
-	
 	self.add_enter_method(func():
 		self._elapsed = 0.0
 	)

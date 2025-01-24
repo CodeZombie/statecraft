@@ -90,7 +90,7 @@ var created_by: String
 #var dynamic_timers: Array[DynamicTimer] = []
 #var dynamic_tweens: Array[DynamicTween] = []
 var _status: Status = Status.READY
-var _props: Dictionary = {}
+var props: Dictionary = {}
 #var conditions: Dictionary[String, Callable] = {}
 
 var message_handlers: Dictionary[String, Array] = {}
@@ -115,15 +115,19 @@ func _init(id: String, skippable: bool = false):
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-func add_enter_method(on_enter_method: Callable):
+func add_to_runner(state_runner: StateRunner) -> State:
+	state_runner.add_state(self)
+	return self
+	
+func add_enter_method(on_enter_method: Callable) -> State:
 	self.on_enter_methods.append(on_enter_method)
 	return self
 
-func add_update_method(closure_method: Callable):
+func add_update_method(closure_method: Callable) -> State:
 	self.on_update_methods.append(closure_method)
 	return self
 
-func add_exit_method(closure_method: Callable):
+func add_exit_method(closure_method: Callable) -> State:
 	self.on_exit_methods.append(closure_method)
 	return self
 	
@@ -168,7 +172,7 @@ func emit(message_id: String):
 	
 func enter():
 
-	self._props = {} # Clear props
+	self.props = {} # Clear props
 	
 	self._status = Status.RUNNING
 	
@@ -180,7 +184,7 @@ func enter():
 	for enter_method in self.on_enter_methods:
 		if is_method_still_bound(enter_method):
 			if enter_method.get_argument_count() > 0:
-				enter_method.call(self._props)
+				enter_method.call(self)
 			else:
 				enter_method.call()
 
@@ -197,7 +201,7 @@ func update(delta: float, speed_scale: float = 1):
 	for update_method in self.on_update_methods:
 		if is_method_still_bound(update_method):
 			if update_method.get_argument_count() == 2:
-				update_method.call(self._props, delta * speed_scale)
+				update_method.call(self, delta * speed_scale)
 			else:
 				update_method.call(delta * speed_scale)
 
@@ -206,7 +210,7 @@ func exit():
 	for exit_method in self.on_exit_methods:
 		if is_method_still_bound(exit_method):
 			if exit_method.get_argument_count() == 1:
-				exit_method.call(self._props)
+				exit_method.call(self)
 			else:
 				exit_method.call()
 
@@ -271,7 +275,7 @@ func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):
 		indent_string += " "
-	return indent_string + self.id + ": " + self.get_status_string()
+	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.on_enter_methods))
 
 func get_status_string() -> String:
 	return Status.keys()[self._status]

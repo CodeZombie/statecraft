@@ -80,14 +80,15 @@ func update(delta: float, speed_scale: float = 1):
 				#self.transition_to(to)
 		#)
 
-func transition_dynamic(from: String, condition: Callable):
+func transition_dynamic(from: String, condition: Callable) -> StateRunner:
 	self.transitions.append(func():
 		if self.get_current_state().id == from:
 			var return_value = condition.call()
 			if return_value:
 				self.transition_to(return_value))
+	return self
 			
-func on(from: String, condition: Variant, callable: Callable):
+func on(from: String, condition: Variant, callable: Callable) -> StateRunner:
 	if condition is Signal:
 		condition.connect(func(): if self.get_current_state().id == from: callable.call())
 		
@@ -99,31 +100,19 @@ func on(from: String, condition: Variant, callable: Callable):
 			if self.get_current_state().id == from:
 				if condition.call():
 					callable.call())
+	return self
 
-func transition_on(from: String, to: String, condition: Variant):
+func transition_on(from: String, to: String, condition: Variant) -> StateRunner:
 	self.on(from, condition, self.transition_to.bind(to))
-	#if condition is Signal:
-		#condition.connect(func(): if self.get_current_state().id == from: self.transition_to(to))
-		#
-	#elif condition is String:
-		#self.transitions.append(func():
-			#if self.get_current_state().id == from:
-				#if self.get_callable_from_condition_path(condition).call():
-					#self.transition_to(to))
-					#
-	#elif condition is Callable:
-		#self.transitions.append(func():
-			#if self.get_current_state().id == from:
-				#if self.condition.call():
-					#self.transition_to(to))
+	return self
 			
-func add_state(state: State):
+func add_state(state: State) -> StateRunner:
 	if self.get_state(state.id):
 		push_error("StateCraft Error: State with ID \"{0}\" already present in State Runner \"{1}\"".format({0: state.id, 1: self.id}))
 	self.child_states.append(state)
 	#if self.child_states.length() == 1:
 		#self.initial_state_id = state.id
-	return state
+	return self
 
 func get_state_from_message_path(message_path: String) -> State:
 	var path_components: Array = Array(message_path.split("."))
@@ -169,7 +158,7 @@ func get_current_state() -> State:
 	#self.state_events[from_state_id].append(state_event)
 	#return self
 	
-func transition_to(state_id: String):
+func transition_to(state_id: String) -> StateRunner:
 	if not self.get_current_state():
 		return
 	self.get_current_state().exit()
@@ -177,10 +166,11 @@ func transition_to(state_id: String):
 	if self.current_state_index == -1:
 		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
 	self.get_current_state().enter()
+	return self
 
 
 #func on_condition_met(state_id: String, condition_id: String, handler: Callable) -> StateRunner:
-	#if state_id not in self.condition_handlers.keys():
+	#if state_id not in self.condition_handlers.keys(): 
 		#self.condition_handlers[state_id] = {}
 	#if condition_id not in self.condition_handlers[state_id].keys():
 		#self.condition_handlers[state_id][condition_id] = []
@@ -197,7 +187,7 @@ func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):
 		indent_string += " "
-	var s: String = indent_string + self.id + ": " + self.get_status_string() + " : " + str(len(self.child_states))
+	var s: String = indent_string + self.id + ": " + self.get_status_string() + " : " + str(len(self.transitions))
 	for child_state in self.child_states:
 		s += "\n" + child_state.as_string(indent + 4)
 	return s

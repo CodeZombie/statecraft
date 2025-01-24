@@ -28,8 +28,10 @@ func _init(id: String, skippable: bool = false):
 	#self.on_condition_met(state_id, condition_id, self.transition_to_next_state.bind())
 	#return self
 
-func advance_on(from: String, condition: Variant):
-	self.transition_on(from, self.get_next_state_id(), condition)
+func advance_on(from: String, condition: Variant) -> StateQueue:
+	self.on(from, condition, func():
+		self.transition_to(self.get_next_state_id()))
+	return self
 
 #func transition_from(state_id: String) -> StateEvent:
 	#if state_id not in self.state_events.keys():
