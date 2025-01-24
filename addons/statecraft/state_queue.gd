@@ -29,10 +29,13 @@ func _init(id: String, skippable: bool = false):
 	#return self
 
 func advance_on(from: String, condition: Variant) -> StateQueue:
-	self.on(from, condition, func():
-		self.transition_to(self.get_next_state_id()))
+	if condition is String:
+		self.on_message(condition, func(): self.transition_to(self.get_next_state_id()))
+	else:
+		var target_state: State = self.get_state(from)
+		target_state.on(condition, func(): self.transition_to(self.get_next_state_id()))
 	return self
-
+	
 #func transition_from(state_id: String) -> StateEvent:
 	#if state_id not in self.state_events.keys():
 		#self.state_events[state_id] = []

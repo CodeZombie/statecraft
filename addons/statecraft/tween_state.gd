@@ -11,7 +11,7 @@ func _init(state_id: String, scene_node: Node, tween_definition_method: Callable
 	self.scene_node = scene_node
 	self.tween_definition_method = tween_definition_method
 	
-	self.add_enter_method(func():
+	self.add_enter_event(func():
 		if self.tween:
 			self.tween.kill()
 		self._finished = false
@@ -21,14 +21,14 @@ func _init(state_id: String, scene_node: Node, tween_definition_method: Callable
 		self.tween.pause()
 	)
 	
-	self.add_update_method(func(delta: float):
+	self.add_update_event(func(delta: float):
 		if self.tween and not self._finished:
 			self._finished = not self.tween.custom_step(delta)
 			if self._finished:
 				self.emit("tween_finished")
 	)
 	
-	self.add_exit_method(self.kill.bind())
+	self.add_exit_event(self.kill.bind())
 		
 func kill():
 	if self.tween:

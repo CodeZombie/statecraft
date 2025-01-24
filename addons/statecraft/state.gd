@@ -82,27 +82,28 @@ enum Status{READY, RUNNING, WAITING_TO_EXIT, EXITED}
 		#return self.has_finished
 		
 var id: String
-var on_enter_methods: Array[Callable] = []
-var on_update_methods: Array[Callable] = []
-var on_exit_methods: Array[Callable] = []
+var enter_events: Array[Callable] = []
+var update_events: Array[Callable] = []
+var exit_events: Array[Callable] = []
 var skippable: bool
 var created_by: String
 #var dynamic_timers: Array[DynamicTimer] = []
 #var dynamic_tweens: Array[DynamicTween] = []
 var _status: Status = Status.READY
 var props: Dictionary = {}
+var actions: Array[Callable] = []
 #var conditions: Dictionary[String, Callable] = {}
 
 var message_handlers: Dictionary[String, Array] = {}
 
 func copy(new_state_id: String):
 	var copy_state = State.new(new_state_id, self.skippable)
-	for enter_method in self.on_enter_methods:
-		copy_state.add_enter_method(enter_method)
-	for update_method in self.on_update_methods:
-		copy_state.add_update_method(update_method)
-	for exit_method in self.on_exit_methods:
-		copy_state.add_exit_method(exit_method)
+	for enter_method in self.enter_events:
+		copy_state.add_enter_event(enter_method)
+	for update_method in self.update_events:
+		copy_state.add_update_event(update_method)
+	for exit_method in self.exit_events:
+		copy_state.add_exit_event(exit_method)
 	return copy_state
 
 #func exit():
@@ -119,16 +120,59 @@ func add_to_runner(state_runner: StateRunner) -> State:
 	state_runner.add_state(self)
 	return self
 	
-func add_enter_method(on_enter_method: Callable) -> State:
-	self.on_enter_methods.append(on_enter_method)
+func add_enter_event(enter_method: Callable) -> State:
+	self.enter_events.append(enter_method)
 	return self
 
-func add_update_method(closure_method: Callable) -> State:
-	self.on_update_methods.append(closure_method)
+func add_update_event(update_event: Callable) -> State:
+	self.update_events.append(update_event)
 	return self
 
-func add_exit_method(closure_method: Callable) -> State:
-	self.on_exit_methods.append(closure_method)
+func add_exit_event(exit_event: Callable) -> State:
+	self.exit_events.append(exit_event)
+	return self
+	
+func get_state_from_message_path(message_path: String) -> State:
+	var path_components: Array = Array(message_path.split("."))
+	var message_id: String = path_components.pop_back()
+	if len(path_components) > 0:
+		assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
+	return self
+
+	
+func on_message(message_path: String, action: Callable) -> State:
+	var path_components: Array = Array(message_path.split("."))
+	var message_id: String = path_components.pop_back()
+	
+	if len(path_components) > 0:
+		assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
+	
+	if message_id not in self.message_handlers.keys():
+		self.message_handlers[message_id] = []
+		
+	self.message_handlers[message_id].append(action)
+	return self
+	
+func on_signal(sig: Signal, action: Callable) -> State:
+	sig.connect(action.call)
+	return self
+
+func on_callable(callable: Callable, action: Callable) -> State:
+	self.actions.append(func():
+		if callable.call():
+			action.call())
+	return self
+
+func on(condition: Variant, action: Callable) -> State:
+	if condition is Signal:
+		self.on_signal(condition, action)
+		
+	elif condition is String:
+		self.on_message(condition, action)
+		
+	elif condition is Callable:
+		self.on_callable(condition, action)
+		
 	return self
 	
 #func add_condition(condition_id: String, condition_callable: Callable) -> State:
@@ -139,14 +183,17 @@ func add_exit_method(closure_method: Callable) -> State:
 	#return self.conditions[condition_id]
 	
 func clear_all_enter_methods():
-	self.on_enter_methods.clear()
+	self.enter_events.clear()
 	return self
+	
 func clear_all_update_methods():
-	self.on_update_methods.clear()
+	self.update_events.clear()
 	return self
+	
 func clear_all_exit_methods():
-	self.on_exit_methods.clear()
+	self.exit_events.clear()
 	return self
+	
 #func clear_all_conditions():
 	#self.conditions = {}
 	#return self
@@ -160,10 +207,10 @@ func clear_all_exit_methods():
 	#self.dynamic_tweens.append(DynamicTween.new(scene_node, tween_definition_method, on_finished))
 	#return self
 
-func add_message_handler(message_id: String, message_handler_callable: Callable):
-	if message_id not in self.message_handlers.keys():
-		self.message_handlers[message_id] = []
-	self.message_handlers[message_id].append(message_handler_callable)
+#func add_message_handler(message_id: String, message_handler_callable: Callable):
+	#if message_id not in self.message_handlers.keys():
+		#self.message_handlers[message_id] = []
+	#self.message_handlers[message_id].append(message_handler_callable)
 
 func emit(message_id: String):
 	if message_id in self.message_handlers.keys():
@@ -181,7 +228,7 @@ func enter():
 		#
 	#for dynamic_timer in self.dynamic_timers:
 		#dynamic_timer.reset()
-	for enter_method in self.on_enter_methods:
+	for enter_method in self.enter_events:
 		if is_method_still_bound(enter_method):
 			if enter_method.get_argument_count() > 0:
 				enter_method.call(self)
@@ -198,16 +245,19 @@ func update(delta: float, speed_scale: float = 1):
 		#var dynamic_tween_return_value: Variant = dynamic_tween.process(delta, speed_scale)
 		#if dynamic_tween_return_value:
 			#return dynamic_tween_return_value
-	for update_method in self.on_update_methods:
+	for update_method in self.update_events:
 		if is_method_still_bound(update_method):
 			if update_method.get_argument_count() == 2:
 				update_method.call(self, delta * speed_scale)
 			else:
 				update_method.call(delta * speed_scale)
+		
+	for action in self.actions:
+		action.call()
 
 func exit():
 	self._status = Status.READY
-	for exit_method in self.on_exit_methods:
+	for exit_method in self.exit_events:
 		if is_method_still_bound(exit_method):
 			if exit_method.get_argument_count() == 1:
 				exit_method.call(self)
@@ -275,7 +325,7 @@ func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):
 		indent_string += " "
-	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.on_enter_methods))
+	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.enter_events))
 
 func get_status_string() -> String:
 	return Status.keys()[self._status]

@@ -16,7 +16,7 @@ func _ready() -> void:
 	.add_state(
 		TweenState.new("move_to_pos_a", self, func(tween):
 			tween.tween_property(self, "scale", Vector2(2, 2), 0.5))\
-		.add_update_method(func(state, _delta):
+		.add_update_event(func(state, _delta):
 			self.position = lerp(self.position, pos_a.position, speed * _delta)
 			if self.position.distance_to(pos_a.position) < 10:
 				state.emit("move_finished") ))\
@@ -32,7 +32,7 @@ func _ready() -> void:
 	.add_state(
 		TweenState.new("move_to_pos_b", self, func(tween):
 			tween.tween_property(self, "scale", Vector2(1, 1), 0.5))\
-		.add_update_method(func(state, delta):
+		.add_update_event(func(state, delta):
 			self.position = lerp(self.position, pos_b.position, speed * delta)
 			if self.position.distance_to(pos_b.position) < 10:
 				state.emit("move_finished") ))\
