@@ -19,15 +19,16 @@ var props: Dictionary = {}
 var actions: Array[Callable] = []
 var message_handlers: Dictionary[String, Array] = {}
 
-func copy(new_state_id: String):
-	var copy_state = State.new(new_state_id, self.skippable)
+func copy(new_id: String = self.id, new_state = null) -> State:
+	new_state = State.new(new_id) if not new_state else new_state
+	new_state.skippable = self.skippable
 	for enter_method in self.enter_events:
-		copy_state.add_enter_event(enter_method)
+		new_state.add_enter_event(enter_method)
 	for update_method in self.update_events:
-		copy_state.add_update_event(update_method)
+		new_state.add_update_event(update_method)
 	for exit_method in self.exit_events:
-		copy_state.add_exit_event(exit_method)
-	return copy_state
+		new_state.add_exit_event(exit_method)
+	return new_state
 
 func _init(id: String, skippable: bool = false):
 	self.id = id

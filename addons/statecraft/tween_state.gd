@@ -34,3 +34,6 @@ func update(delta: float, speed_scale: float = 1):
 func exit():
 	self.kill()
 	super()
+
+func copy(new_id: String = self.id, _new_state = null):
+	return super(new_id, TweenState.new(new_id, self.scene_node, self.tween_definition_method) if not _new_state else _new_state)

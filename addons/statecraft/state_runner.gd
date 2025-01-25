@@ -25,6 +25,10 @@ func exit():
 func on_message(message_path: String, action: Callable):
 	var path_components: Array = Array(message_path.split("."))
 	var message_id: String = path_components.pop_back()
+	
+	if action.get_argument_count() > 0 and action.get_bound_arguments_count() == 0:
+		action = action.bind(self)
+		
 	if len(path_components) > 0:
 		var current_state = path_components.pop_front()
 		return self.get_state(current_state).on_message(".".join(path_components + [message_id]), action)
@@ -43,7 +47,7 @@ func transition_on(from: String, to: String, condition: Variant) -> StateRunner:
 		self.on_message(condition, self.transition_to.bind(to))
 	else:
 		var target_state: State = self.get_state(from)
-		target_state.on(condition, func(): self.transition_to(to))
+		target_state.on(condition, self.transition_to.bind(to))
 	return self
 			
 func add_state(state: State) -> StateRunner:
@@ -96,3 +100,9 @@ func as_string(indent: int = 0) -> String:
 	for child_state in self.child_states:
 		s += "\n" + child_state.as_string(indent + 4)
 	return s
+
+func copy(new_id: String = self.id, _new_state = null) -> StateRunner:
+	_new_state = super(new_id, StateRunner.new(new_id) if not _new_state else _new_state)
+	for child_state in self.child_states:
+		_new_state.add_state(child_state.copy(child_state.id))
+	return _new_state

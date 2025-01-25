@@ -75,7 +75,7 @@ func _ready() -> void:
 	.add_state(
 		TweenState.new("mag_in", self, func(tween: Tween): 
 			tween.tween_property($GunBody/Magazine, "position", Vector2(89, 45), .5) )
-		.on("tween_finished", gun_state_machine.transition_to.bind("idle")))\
+		.on("tween_finished", gun_state_machine.transition_to.bind("idle")) )\
 	.add_exit_event(func(): self.loaded_rounds = self.magazine_capacity)\
 	.add_to_runner(gun_state_machine)
 	

@@ -36,7 +36,10 @@ func _ready() -> void:
 			self.position = lerp(self.position, pos_b.position, speed * delta)
 			if self.position.distance_to(pos_b.position) < 10:
 				state.emit("move_finished") ))\
-	.advance_on("move_to_pos_b", "move_to_pos_b.move_finished")
+	.advance_on("move_to_pos_b", "move_to_pos_b.move_finished")\
+	.on("move_to_pos_b.move_finished", func(state): state.emit("all_done"))
+	
+	state_queue.on("all_done", func(): self.pos_a.position.x -= 100)
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:

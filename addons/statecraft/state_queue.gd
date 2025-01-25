@@ -37,3 +37,6 @@ func update(delta: float, speed_scale: float = 1.0):
 	
 func clear():
 	self.queue.clear()
+
+func copy(new_id: String = self.id, _new_state = null) -> StateQueue:
+	return super(new_id, StateQueue.new(new_id) if not _new_state else _new_state)
