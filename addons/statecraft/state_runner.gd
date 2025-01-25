@@ -37,7 +37,7 @@ func on_message(message_path: String, action: Callable):
 func transition_dynamic(from: String, condition: Callable) -> StateRunner:
 	self.actions.append(func():
 		if self.get_current_state().id == from:
-			var return_value = condition.call()
+			var return_value = condition.call(self) if condition.get_argument_count() > 0 else condition.call()
 			if return_value:
 				self.transition_to(return_value))
 	return self
