@@ -62,4 +62,4 @@ func _on_h_slider_value_changed(value: float) -> void:
 	self.state_queue_speed = value
 
 func _draw() -> void:
-	self.state_queue.get_2d_draw_callable(Vector2(2, 2), self)
+	self.state_queue.draw(Vector2(2, 2), self)

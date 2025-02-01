@@ -74,12 +74,18 @@ func transition_dynamic(from: String, condition: Callable) -> StateRunner:
 				self.transition_to(return_value))
 	return self
 		
-func transition_on(from: String, to: String, condition: Variant) -> StateRunner:
+func transition_on(from: String, to: String, condition: Variant, additional_callable_condition: Variant = null) -> StateRunner:
+	var transition_callable: Callable = self.transition_to.bind(to)
+	if additional_callable_condition:
+		transition_callable = func():
+			if additional_callable_condition.call():
+				self.transition_to(to)
+				
 	if condition is String:
-		self.on_message(condition, self.transition_to.bind(to))
+		self.on_message(condition, transition_callable)
 	else:
 		var target_state: State = self.get_state(from)
-		target_state.on(condition, self.transition_to.bind(to))
+		target_state.on(condition, transition_callable)
 	return self
 
 func transition_on_exit(from: String, to: String) -> StateRunner:
