@@ -20,72 +20,59 @@ var loaded_rounds = magazine_capacity
 # Called when the node enters the scene tree for the first time.
 func _ready() -> void:
 	self.gunbody_start_position = $GunBody.position
-	$GunBody/Magazine/magazine_area.input_event
-	#(
-	#gun_state_machine.transition_on("x", "y", "z")
-	#.add_state(State.new("eee"))
-	#.transition_on("x", "y", "z")
-	#)
-	#
-	#gun_state_machine.add_state(State.new("...")).transition_on("x", "y", "test")
-	#
-	
+
 	gun_state_machine = StateMachine.new("gun")\
 	.add_update_event(
 		func(_delta): 
 			$GunBody.position += $GunBody.position.direction_to(self.gunbody_start_position) * $GunBody.position.distance_to(self.gunbody_start_position) * 20 * _delta)\
-	
 	.add_state(State.new("idle"))\
-	.transition_on("idle", "reload", self.magazine_pressed)\
-	.transition_dynamic("idle", func():
+	.from("idle").to("reload").on(self.magazine_pressed)\
+	.from("idle").to_dynamic(func():
 		if self.trigger_pressed:
 			if self.loaded_rounds == 0:
 				return "magazine_empty_click"
-			return "jammed" if randf() > 0.9 else "fire_round")\
-	
+			return "jammed" if randf() > 0.98 else "fire_round")\
+			
 	.add_state(
 		TimerState.new("magazine_empty_click", self.firing_interval)\
 		.add_enter_event(play_sound.bind(click_sound)) )\
-	.transition_on("magazine_empty_click", "idle", "magazine_empty_click.timer_elapsed")\
+	.from("magazine_empty_click").to("idle").on_exit()\
+	
 	.add_state(
 		StateMachine.new("jammed")
-		.add_state(State.new("idle"))
-		.transition_on("idle", "click", self.is_trigger_pressed.bind())
-		.transition_on("idle", "clear_jam", self.magazine_pressed)
+		.add_state(
+			State.new("idle")
+			.emit_on("clearing_jam", self.magazine_pressed))\
 		.add_state(
 			TimerState.new("click", firing_interval)
-			.add_enter_event(play_sound.bind(click_sound)) )
-		.transition_on("click", "idle", "click.timer_elapsed")
-		.add_state(
-			State.new("clear_jam")
-			.add_enter_event(func(): gun_state_machine.transition_to("reload")) )\
-	)\
+			.add_enter_event(play_sound.bind(click_sound)))
+		.from("idle").to("click").on(self.is_trigger_pressed.bind())\
+		.from("click").to("idle").on_exit())\
+	.from("jammed").to("reload").on("jammed.idle.clearing_jam")\
 	.add_state(self.fire_round_state("fire_round"))\
-	.transition_on("fire_round", "idle", "fire_round.tween_finished")
+	.from("fire_round").to("idle").on_exit()
 	
 	StateQueue.new("reload")\
 	.add_state(
-		TweenState.new(
-			"mag_out", 
-			self, 
-			func(tween: Tween): 
-				tween.tween_property($GunBody/Magazine, "position", Vector2(89, 85), .5))\
+		TweenState.new("mag_out", self, func(tween: Tween): 
+			tween.tween_property($GunBody/Magazine, "position", Vector2(89, 85), .5))\
 		.add_enter_event(play_sound.bind(reload_sound)))\
-	.transition_on("mag_out", "mag_in", "mag_out.tween_finished")\
 	.add_state(
 		TweenState.new("mag_in", self, func(tween: Tween): 
-			tween.tween_property($GunBody/Magazine, "position", Vector2(89, 45), .5) )
-		.on("tween_finished", gun_state_machine.transition_to.bind("idle")) )\
+			tween.tween_property($GunBody/Magazine, "position", Vector2(89, 45), .5)))\
 	.add_exit_event(func(): self.loaded_rounds = self.magazine_capacity)\
 	.add_to_runner(gun_state_machine)
 	
+	gun_state_machine.transition_on_exit("reload", "idle")
+	
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
-	gun_state_machine.run(1.0)
-	
-	self.debug_label.text = "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state().id)
+	gun_state_machine.run(delta, 1.0)
+	self.debug_label.text = str(Engine.get_frames_per_second()) + " fps\n"
+	self.debug_label.text += "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state().id)
 	self.debug_label.text += "\n"
 	self.debug_label.text += self.gun_state_machine.as_string()
+	self.queue_redraw()
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
@@ -120,3 +107,6 @@ func fire_round_state(state_id: String = "fire_round") -> State:
 	.add_enter_event(func():
 		play_sound(gunshot_sound)
 		self.loaded_rounds -= 1)
+
+func _draw() -> void:
+	self.gun_state_machine.get_2d_draw_callable(Vector2(768, 64), self)

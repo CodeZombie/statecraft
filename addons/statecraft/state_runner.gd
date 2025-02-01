@@ -6,20 +6,18 @@ var current_state_index: int = 0
 func enter():
 	super()
 	self.current_state_index = 0
-	var current_state = self.get_current_state()
-	if current_state:
-		current_state.enter()
 
-func update(delta: float, speed_scale: float = 1):
-	super(delta, speed_scale)
-	var current_state = self.get_current_state()
-	if current_state:
-		self.get_current_state().update(delta, speed_scale)
+#func update(delta: float, speed_scale: float = 1):
+	#super(delta, speed_scale)
+	#var current_state = self.get_current_state()
+	#if current_state:
+		#self.get_current_state().run(delta, speed_scale)
 
 func exit():
 	super()
 	var current_state = self.get_current_state()
-	if current_state and current_state._status == Status.RUNNING:
+	
+	if current_state and current_state.is_running:
 		current_state.exit()
 		
 func on_message(message_path: String, action: Callable):
@@ -33,6 +31,40 @@ func on_message(message_path: String, action: Callable):
 		var current_state = path_components.pop_front()
 		return self.get_state(current_state).on_message(".".join(path_components + [message_id]), action)
 	return super(message_path, action)
+
+func get_state_from_message_path(message_path: String) -> State:
+	var path_components: Array = Array(message_path.split("."))
+	var message_id: String = path_components.pop_back()
+	var current_state = self
+	for path_component in path_components:
+		current_state = current_state.get_state(path_component)
+	return current_state
+
+func get_state(state_id: String) -> State:
+	for state in self.child_states:
+		if state.id == state_id:
+			return state
+	return null
+
+func get_current_state() -> State:
+	if self.current_state_index < len(self.child_states):
+		return self.child_states[self.current_state_index]
+	return null
+	
+func add_state(state: State) -> StateRunner:
+	self.child_states.push_back(state)
+	return self
+
+func transition_to(state_id: String) -> StateRunner:
+	if not self.get_current_state():
+		return
+	var current_state = self.get_current_state()
+	if current_state and current_state.is_running:
+		current_state.exit()
+	self.current_state_index = self.get_state_index(state_id)
+	if self.current_state_index == -1:
+		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
+	return self
 
 func transition_dynamic(from: String, condition: Callable) -> StateRunner:
 	self.actions.append(func():
@@ -49,42 +81,14 @@ func transition_on(from: String, to: String, condition: Variant) -> StateRunner:
 		var target_state: State = self.get_state(from)
 		target_state.on(condition, self.transition_to.bind(to))
 	return self
-			
-func add_state(state: State) -> StateRunner:
-	if self.get_state(state.id):
-		push_error("StateCraft Error: State with ID \"{0}\" already present in State Runner \"{1}\"".format({0: state.id, 1: self.id}))
-	self.child_states.append(state)
+
+func transition_on_exit(from: String, to: String) -> StateRunner:
+	print("Adding transition_on_exit for {0}: {1} -> {2}".format({0: self.id, 1: from, 2: to}))
+	self.get_state(from).on_exit_transition_method = self.transition_to.bind(to)
 	return self
-
-func get_state_from_message_path(message_path: String) -> State:
-	var path_components: Array = Array(message_path.split("."))
-	var message_id: String = path_components.pop_back()
-	var current_state = self
-	for path_component in path_components:
-		current_state = current_state.get_state(path_component)
-	return current_state
-
-func get_state(state_id: String) -> State:
-	for child_state in self.child_states:
-		if child_state.id == state_id:
-			return child_state
-	return null
-
-func get_current_state() -> State:
-	if self.current_state_index < len(self.child_states):
-		#return self.child_states.get_at_index(self.current_state_index)
-		return self.child_states[self.current_state_index]
-	return null
 	
-func transition_to(state_id: String) -> StateRunner:
-	if not self.get_current_state():
-		return
-	self.get_current_state().exit()
-	self.current_state_index = self.get_state_index(state_id)
-	if self.current_state_index == -1:
-		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
-	self.get_current_state().enter()
-	return self
+func from(state_id: String) -> TransitionChainFrom:
+	return TransitionChainFrom.new(self, state_id)
 
 func get_state_index(state_id: String):
 	for i in range(len(self.child_states)):
@@ -106,3 +110,14 @@ func copy(new_id: String = self.id, _new_state = null) -> StateRunner:
 	for child_state in self.child_states:
 		_new_state.add_state(child_state.copy(child_state.id))
 	return _new_state
+	
+func get_2d_draw_callable(position: Vector2, node: Node2D, delta: float = Engine.get_main_loop().root.get_process_delta_time(), text_size: float = 16, padding_size: float = 8) -> float:
+	var y_offset = super(position, node, delta)
+	var initial_y_offset = y_offset
+	for i in range(len(self.child_states)):
+		node.draw_line(position + Vector2(padding_size, y_offset), position + Vector2(padding_size * 4, y_offset), Color.DIM_GRAY)
+
+		y_offset += self.child_states[i].get_2d_draw_callable(Vector2(position.x + padding_size * 4, position.y + y_offset), node, delta, text_size, padding_size)
+
+	node.draw_line(position + Vector2(padding_size, padding_size*3), position + Vector2(padding_size, y_offset - padding_size), Color.DIM_GRAY)
+	return y_offset 

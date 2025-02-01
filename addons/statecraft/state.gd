@@ -1,6 +1,5 @@
 class_name State
 
-enum Status{READY, RUNNING, WAITING_TO_EXIT, EXITED}
 
 # TODO: CHeck to see if elapsed_runtime is accurate!!!!!
 
@@ -12,12 +11,15 @@ var id: String
 var enter_events: Array[Callable] = []
 var update_events: Array[Callable] = []
 var exit_events: Array[Callable] = []
+var on_exit_transition_method: Callable
 var skippable: bool
 var created_by: String
-var _status: Status = Status.READY
+var is_running: bool = false
 var props: Dictionary = {}
 var actions: Array[Callable] = []
 var message_handlers: Dictionary[String, Array] = {}
+
+var _debug_draw_label_running_color_fade_factor: float = 0.0
 
 func copy(new_id: String = self.id, new_state = null) -> State:
 	new_state = State.new(new_id) if not new_state else new_state
@@ -30,9 +32,8 @@ func copy(new_id: String = self.id, new_state = null) -> State:
 		new_state.add_exit_event(exit_method)
 	return new_state
 
-func _init(id: String, skippable: bool = false):
+func _init(id: String):
 	self.id = id
-	self.skippable = skippable
 
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
@@ -74,7 +75,12 @@ func on_message(message_path: String, action: Callable) -> State:
 	return self
 	
 func on_signal(sig: Signal, action: Callable) -> State:
-	sig.connect(action.call)
+	sig.connect(func(): 
+		if self.is_running: 
+			if action.get_argument_count() > 0:
+				action.call(self)
+			else:
+				action.call())
 	return self
 
 func on_callable(callable: Callable, action: Callable) -> State:
@@ -111,12 +117,14 @@ func emit(message_id: String):
 	if message_id in self.message_handlers.keys():
 		for message_handler_callable in self.message_handlers[message_id]:
 			message_handler_callable.call()
+			
+func emit_on(message_id: String, condition: Variant) -> State:
+	self.on(condition, self.emit.bind(message_id))
+	return self
 	
 func enter():
-
+	self.is_running = true
 	self.props = {}
-	
-	self._status = Status.RUNNING
 	
 	for enter_method in self.enter_events:
 		if is_method_still_bound(enter_method):
@@ -125,19 +133,25 @@ func enter():
 			else:
 				enter_method.call()
 
-func update(delta: float, speed_scale: float = 1):
+func update(delta: float, speed_scale: float = 1) -> bool:
+	var custom_update_method_return_value: bool = false
 	for update_method in self.update_events:
 		if is_method_still_bound(update_method):
-			if update_method.get_argument_count() == 2:
-				update_method.call(self, delta * speed_scale)
+			
+			if update_method.get_argument_count() > 1:
+				if update_method.call(self, delta * speed_scale):
+					custom_update_method_return_value = true
 			else:
-				update_method.call(delta * speed_scale)
+				if update_method.call(delta * speed_scale):
+					custom_update_method_return_value = true
 		
 	for action in self.actions:
 		action.call()
+	
+	return custom_update_method_return_value
 
 func exit():
-	self._status = Status.READY
+	self.is_running = false
 	for exit_method in self.exit_events:
 		if is_method_still_bound(exit_method):
 			if exit_method.get_argument_count() == 1:
@@ -149,14 +163,25 @@ func restart():
 	self.exit()
 	self.enter()
 
-func run( speed_scale: float):
-	if self._status == Status.READY:
+func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
+	if not self.is_running:
+		if self.id == "mag_out":
+			print("enter")
 		self.enter()
+	
+	if self.update(delta, speed_scale):
+		if self.id == "mag_out":
+			print("Exited lol")
+		self.exit()
+		if self.on_exit_transition_method:
+			print("Running {0}'s on_exit_transition_method".format({0: self.id}))
+			if self.on_exit_transition_method.get_argument_count() == 1:
+				self.on_exit_transition_method.call(self)
+			else:
+				self.on_exit_transition_method.call()
+		return true
 		
-	if self._status == Status.RUNNING:
-		self.update(Engine.get_main_loop().root.get_process_delta_time(), speed_scale)
-		
-	# TODO: How does exit() get run???????
+	return false
 
 func is_method_still_bound(method: Callable) -> bool:
 	if method.get_object() == null:
@@ -171,4 +196,38 @@ func as_string(indent: int = 0) -> String:
 	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.enter_events))
 
 func get_status_string() -> String:
-	return Status.keys()[self._status]
+	return "RUNNING" if self.is_running else "READY"
+	
+func _draw_text_with_box(text: String, position: Vector2, font_size: float, padding_size: float, node: Node2D, text_color: Color, box_color: Color) -> Vector2:
+	var text_size: Vector2 = ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+	node.draw_rect(Rect2(position - Vector2(0, padding_size * 2), Vector2(text_size.x + padding_size * 2, text_size.y + padding_size * 2)), box_color)
+	node.draw_string(ThemeDB.fallback_font, position + Vector2(padding_size, padding_size), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+	return text_size + Vector2(padding_size * 2, padding_size * 2)
+	
+func get_2d_draw_callable(position: Vector2, node: Node2D, delta: float = Engine.get_main_loop().root.get_process_delta_time(), text_size: float = 16, padding_size: float = 8) -> float:
+	#var old_z_index = node.z_index
+	#node.z_index = -99999
+	var y_offset: float = 0.0
+	if self.is_running: self._debug_draw_label_running_color_fade_factor = 1.0
+	else: self._debug_draw_label_running_color_fade_factor = max(0.0, self._debug_draw_label_running_color_fade_factor - delta * 3)
+	
+	var header_size: Vector2 = self._draw_text_with_box(
+		self.id, 
+		position, 
+		text_size, 
+		padding_size, 
+		node, 
+		Color.BLACK.lerp(Color.AQUAMARINE, self._debug_draw_label_running_color_fade_factor), 
+		Color.BISQUE.lerp(Color.BLACK, self._debug_draw_label_running_color_fade_factor))
+	y_offset += header_size.y
+	var rect: Rect2 = Rect2(Vector2(position.x, position.y - padding_size * 2), header_size)
+	#node.draw_rect(rect, Color(1.0, 0, 0, 0.5))
+	if rect.has_point(node.get_local_mouse_position()):
+		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
+		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
+		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
+		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
+		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
+	
+	#node.z_index = old_z_index
+	return y_offset

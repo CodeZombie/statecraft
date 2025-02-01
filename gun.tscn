@@ -1,8 +1,8 @@
 [gd_scene load_steps=6 format=3 uid="uid://djbcbmv3cwvns"]
 
-[ext_resource type="Script" uid="uid://c4vvbh35v1678" path="res://gun_state_queue.gd" id="1_21dbx"]
-[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://assets/gun_body.png" id="1_xnr8i"]
-[ext_resource type="Texture2D" uid="uid://dry7mksw1rjv2" path="res://assets/magazine.png" id="2_tw45k"]
+[ext_resource type="Script" uid="uid://c4vvbh35v1678" path="res://gun.gd" id="1_kw0bs"]
+[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://assets/gun_body.png" id="2_8iju2"]
+[ext_resource type="Texture2D" uid="uid://dry7mksw1rjv2" path="res://assets/magazine.png" id="3_7vd5q"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_k4nyq"]
 size = Vector2(76.9732, 132.198)
@@ -10,19 +10,19 @@ size = Vector2(76.9732, 132.198)
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_4by8c"]
 size = Vector2(67, 44)
 
-[node name="GunStateQueue" type="Node2D" node_paths=PackedStringArray("audio_player", "debug_label")]
-script = ExtResource("1_21dbx")
+[node name="gun" type="Node2D" node_paths=PackedStringArray("audio_player", "debug_label")]
+script = ExtResource("1_kw0bs")
 audio_player = NodePath("GunBody/AudioStreamPlayer2D")
 debug_label = NodePath("Label")
 
 [node name="GunBody" type="Sprite2D" parent="."]
-position = Vector2(572, 288)
-texture = ExtResource("1_xnr8i")
+position = Vector2(380, 203)
+texture = ExtResource("2_8iju2")
 
 [node name="Magazine" type="Sprite2D" parent="GunBody"]
 z_index = -1
 position = Vector2(89, 45)
-texture = ExtResource("2_tw45k")
+texture = ExtResource("3_7vd5q")
 
 [node name="magazine_area" type="Area2D" parent="GunBody/Magazine"]
 
@@ -40,6 +40,7 @@ shape = SubResource("RectangleShape2D_4by8c")
 [node name="AudioStreamPlayer2D" type="AudioStreamPlayer2D" parent="GunBody"]
 
 [node name="Label" type="Label" parent="."]
+visible = false
 offset_right = 40.0
 offset_bottom = 23.0
 text = "aaaaa"

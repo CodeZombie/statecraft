@@ -1,0 +1,101 @@
+[gd_scene load_steps=12 format=3 uid="uid://cw3mnmvwgrc7s"]
+
+[ext_resource type="Texture2D" uid="uid://dl4thvvdb4k6s" path="res://assets/spritesheets/dragon_spritesheet.png" id="1_n6spy"]
+[ext_resource type="PackedScene" uid="uid://djbcbmv3cwvns" path="res://gun.tscn" id="2_qxdfn"]
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_lhjy6"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(32, 24, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_mpji6"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(0, 24, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gyrd2"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(16, 24, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_vneyq"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(48, 24, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_uoiyk"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(0, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_d8vd7"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(16, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_gkirg"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(32, 0, 16, 24)
+
+[sub_resource type="AtlasTexture" id="AtlasTexture_q51qn"]
+atlas = ExtResource("1_n6spy")
+region = Rect2(48, 0, 16, 24)
+
+[sub_resource type="SpriteFrames" id="SpriteFrames_mven0"]
+animations = [{
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_lhjy6")
+}],
+"loop": true,
+"name": &"fall",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_mpji6")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gyrd2")
+}],
+"loop": true,
+"name": &"idle",
+"speed": 1.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_vneyq")
+}],
+"loop": true,
+"name": &"jump",
+"speed": 5.0
+}, {
+"frames": [{
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_uoiyk")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_d8vd7")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_gkirg")
+}, {
+"duration": 1.0,
+"texture": SubResource("AtlasTexture_q51qn")
+}],
+"loop": true,
+"name": &"walk",
+"speed": 4.0
+}]
+
+[node name="Dragon" type="Node2D"]
+
+[node name="AnimatedSprite2D" type="AnimatedSprite2D" parent="."]
+texture_filter = 1
+scale = Vector2(2, 2)
+sprite_frames = SubResource("SpriteFrames_mven0")
+animation = &"idle"
+frame_progress = 0.222946
+
+[node name="arm" type="Node2D" parent="."]
+position = Vector2(0, 6)
+
+[node name="hand" type="Node2D" parent="arm"]
+position = Vector2(16, 0)
+
+[node name="GunStateQueue" parent="arm/hand" instance=ExtResource("2_qxdfn")]
+scale = Vector2(0.05, 0.05)
