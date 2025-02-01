@@ -227,10 +227,12 @@ func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: 
 	var rect: Rect2 = Rect2(position, header_size)
 	#node.draw_rect(rect, Color(1.0, 0, 0, 0.5))
 	if rect.has_point(node.get_local_mouse_position()):
-		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
-		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
-		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
-		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
-		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+		var info_color_b: Color = colors[1]
+		info_color_b.a = 0.5
+		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 
 	return y_offset
