@@ -111,13 +111,18 @@ func copy(new_id: String = self.id, _new_state = null) -> StateRunner:
 		_new_state.add_state(child_state.copy(child_state.id))
 	return _new_state
 	
-func get_2d_draw_callable(position: Vector2, node: Node2D, delta: float = Engine.get_main_loop().root.get_process_delta_time(), text_size: float = 16, padding_size: float = 8) -> float:
-	var y_offset = super(position, node, delta)
+func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+	var y_offset = super(position, node, text_size, padding_size, delta)
 	var initial_y_offset = y_offset
+	var line_width: float = 4
 	for i in range(len(self.child_states)):
-		node.draw_line(position + Vector2(padding_size, y_offset), position + Vector2(padding_size * 4, y_offset), Color.DIM_GRAY)
+		var indent_width: float = max(16, padding_size)
+		var cell_height: float = (text_size + padding_size * 2) * 1.3
+		var child_state_colors: Array[Color] = self.child_states[i]._get_debug_draw_colors() 
+		node.draw_line(position + Vector2(0, y_offset + cell_height / 2), position + Vector2(indent_width, y_offset  + cell_height / 2), child_state_colors[1], line_width)
 
-		y_offset += self.child_states[i].get_2d_draw_callable(Vector2(position.x + padding_size * 4, position.y + y_offset), node, delta, text_size, padding_size)
+		y_offset += self.child_states[i].draw(Vector2(position.x + indent_width, position.y + y_offset), node, text_size, padding_size, delta)
 
-	node.draw_line(position + Vector2(padding_size, padding_size*3), position + Vector2(padding_size, y_offset - padding_size), Color.DIM_GRAY)
+	var colors: Array[Color] = self._get_debug_draw_colors()
+	node.draw_line(position + Vector2(line_width / 2, 0), position + Vector2(line_width / 2, y_offset), colors[1], line_width)
 	return y_offset 

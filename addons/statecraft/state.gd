@@ -200,34 +200,37 @@ func get_status_string() -> String:
 	
 func _draw_text_with_box(text: String, position: Vector2, font_size: float, padding_size: float, node: Node2D, text_color: Color, box_color: Color) -> Vector2:
 	var text_size: Vector2 = ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
-	node.draw_rect(Rect2(position - Vector2(0, padding_size * 2), Vector2(text_size.x + padding_size * 2, text_size.y + padding_size * 2)), box_color)
-	node.draw_string(ThemeDB.fallback_font, position + Vector2(padding_size, padding_size), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
+	node.draw_rect(Rect2(position, Vector2(text_size.x + padding_size * 2, text_size.y + padding_size * 2)), box_color)
+	node.draw_string(ThemeDB.fallback_font, position + Vector2(padding_size, padding_size + text_size.y / 1.25), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
 	return text_size + Vector2(padding_size * 2, padding_size * 2)
 	
-func get_2d_draw_callable(position: Vector2, node: Node2D, delta: float = Engine.get_main_loop().root.get_process_delta_time(), text_size: float = 16, padding_size: float = 8) -> float:
-	#var old_z_index = node.z_index
-	#node.z_index = -99999
+func _get_debug_draw_colors() -> Array[Color]:
+	return [
+		Color.DARK_SLATE_GRAY.lerp(Color.WHITE_SMOKE, self._debug_draw_label_running_color_fade_factor), 
+		Color.LIGHT_GRAY.lerp(Color.DEEP_SKY_BLUE, self._debug_draw_label_running_color_fade_factor)
+	]
+func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+
 	var y_offset: float = 0.0
 	if self.is_running: self._debug_draw_label_running_color_fade_factor = 1.0
 	else: self._debug_draw_label_running_color_fade_factor = max(0.0, self._debug_draw_label_running_color_fade_factor - delta * 3)
-	
+	var colors = self._get_debug_draw_colors()
 	var header_size: Vector2 = self._draw_text_with_box(
 		self.id, 
 		position, 
 		text_size, 
 		padding_size, 
 		node, 
-		Color.BLACK.lerp(Color.AQUAMARINE, self._debug_draw_label_running_color_fade_factor), 
-		Color.BISQUE.lerp(Color.BLACK, self._debug_draw_label_running_color_fade_factor))
+		colors[0], 
+		colors[1])
 	y_offset += header_size.y
-	var rect: Rect2 = Rect2(Vector2(position.x, position.y - padding_size * 2), header_size)
+	var rect: Rect2 = Rect2(position, header_size)
 	#node.draw_rect(rect, Color(1.0, 0, 0, 0.5))
 	if rect.has_point(node.get_local_mouse_position()):
-		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
-		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
-		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
-		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
-		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(padding_size, y_offset), text_size, padding_size, node, Color.BLACK, Color.AZURE).y
-	
-	#node.z_index = old_z_index
+		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], colors[1]).y
+
 	return y_offset
