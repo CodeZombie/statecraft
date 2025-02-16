@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dl4thvvdb4k6s"
-path="res://.godot/imported/dragon_spritesheet.png-c11bdae5a052ea6cc6c5dccf8c22bd64.ctex"
+uid="uid://di1l4tanikgbh"
+path="res://.godot/imported/gun_body.png-6453688856a72ffbaf52351978deda02.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/spritesheets/dragon_spritesheet.png"
-dest_files=["res://.godot/imported/dragon_spritesheet.png-c11bdae5a052ea6cc6c5dccf8c22bd64.ctex"]
+source_file="res://demo/assets/gun_body.png"
+dest_files=["res://.godot/imported/gun_body.png-6453688856a72ffbaf52351978deda02.ctex"]
 
 [params]
 

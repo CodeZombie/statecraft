@@ -2,9 +2,9 @@ extends Node2D
 
 signal magazine_pressed
 
-var gunshot_sound = preload("res://assets/gunshot.mp3")
-var reload_sound = preload("res://assets/reload.mp3")
-var click_sound = preload("res://assets/click.mp3")
+var gunshot_sound = preload("res://demo/assets/gunshot.mp3")
+var reload_sound = preload("res://demo/assets/reload.mp3")
+var click_sound = preload("res://demo/assets/click.mp3")
 
 @export var audio_player: AudioStreamPlayer2D
 @export var debug_label: Label
