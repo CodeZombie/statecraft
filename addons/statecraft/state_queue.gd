@@ -1,26 +1,29 @@
 class_name StateQueue extends StateRunner
 
-enum EXECUTION_MODE {SERIAL, PARALLEL}
-enum EXIT_POLICY {KEEP, REMOVE}
+enum ExecutionMode {SERIAL, PARALLEL}
+enum ExitPolicy {KEEP, REMOVE}
 
-var _execution_mode: EXECUTION_MODE = EXECUTION_MODE.SERIAL
-var _exit_policy: EXIT_POLICY = EXIT_POLICY.KEEP
+var _execution_mode: ExecutionMode = ExecutionMode.SERIAL
+var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 var _parallel_exited_states: Array[State] = []
 
-func enter():
+func enter() -> bool:
 	self.current_state_index = 0
 	self._parallel_exited_states = []
-	super()
+	return super()
 
 func update(delta: float, speed_scale: float = 1.0) -> bool:
 	var r_val: bool = super(delta, speed_scale)
 	if r_val:
 		return true
-	if self._execution_mode == EXECUTION_MODE.SERIAL:
+		
+	print(self.get_current_state().id)
+		
+	if self._execution_mode == ExecutionMode.SERIAL:
 		var current_state: State = self.get_current_state()
 		if current_state:
 			if self.get_current_state().run(delta, speed_scale):
-				if self._exit_policy == EXIT_POLICY.REMOVE:
+				if self._exit_policy == ExitPolicy.REMOVE:
 					self.child_states.remove_at(self.child_states.find(self.get_current_state()))
 				else:
 					if not self.advance():
@@ -32,7 +35,7 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 				running_states += 1
 				if state.run(delta, speed_scale):
 					running_states -= 1
-					if self._exit_policy == EXIT_POLICY.REMOVE:
+					if self._exit_policy == ExitPolicy.REMOVE:
 						self.child_states.remove_at(self.child_states.find(self.get_current_state()))
 					self._parallel_exited_states.append(state)
 		if running_states == 0:
@@ -40,11 +43,11 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 			
 	return false
 	
-func set_execution_mode(execution_mode: EXECUTION_MODE) -> StateQueue:
+func set_execution_mode(execution_mode: ExecutionMode) -> StateQueue:
 	self._execution_mode = execution_mode
 	return self
 	
-func set_exit_policy(exit_policy: EXIT_POLICY) -> StateQueue:
+func set_exit_policy(exit_policy: ExitPolicy) -> StateQueue:
 	self._exit_policy = exit_policy
 	return self
 

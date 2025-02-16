@@ -7,9 +7,9 @@ func _init(id: String, duration: float):
 	super(id)
 	self.duration = duration
 
-func enter():
-	super()
+func enter() -> bool:
 	self._elapsed = 0.0
+	return super()
 	
 func update(delta: float, speed_scale: float = 1):
 	super(delta, speed_scale)

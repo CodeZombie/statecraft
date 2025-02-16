@@ -4,6 +4,7 @@ var scene_node: Node
 var tween: Tween
 var tween_definition_method: Callable
 var _finished: bool = false
+var _tween_execution_position: State.ExecutionPosition = State.ExecutionPosition.POST_UPDATE
 
 func _init(state_id: String, scene_node: Node, tween_definition_method: Callable):
 	super(state_id)
@@ -15,8 +16,7 @@ func kill():
 		self.tween.kill()
 		self.tween = null
 
-func enter():
-	super()
+func enter() -> bool:
 	if self.tween:
 		self.tween.kill()
 	self._finished = false
@@ -24,14 +24,27 @@ func enter():
 	self.tween_definition_method.call(self.tween)
 	self.tween.play()
 	self.tween.pause()
+	return super()
+	
+func set_tween_execution_position(execution_position: State.ExecutionPosition) -> TweenState:
+	self._tween_execution_position = execution_position
+	return self
 	
 func update(delta: float, speed_scale: float = 1):
-	super(delta, speed_scale)
+	if self._tween_execution_position == State.ExecutionPosition.PRE_UPDATE:
+		if super(delta, speed_scale):
+			return true
+		
 	if self.tween and not self._finished:
 		self._finished = not self.tween.custom_step(delta * speed_scale)
-	if self.id == "mag_out":
-		print("finished: {0}".format({0: self._finished}))
-	return self._finished
+		if self._finished:
+			return true
+		
+	if self._tween_execution_position == State.ExecutionPosition.POST_UPDATE:
+		if super(delta, speed_scale):
+			return true
+		
+	return false
 
 func exit():
 	self.kill()

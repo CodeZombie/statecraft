@@ -1,5 +1,6 @@
 class_name State
 
+enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
 
 # TODO: CHeck to see if elapsed_runtime is accurate!!!!!
 
@@ -122,16 +123,20 @@ func emit_on(message_id: String, condition: Variant) -> State:
 	self.on(condition, self.emit.bind(message_id))
 	return self
 	
-func enter():
+func enter() -> bool:
 	self.is_running = true
 	self.props = {}
+	var custom_enter_method_return_value: bool = false
 	
 	for enter_method in self.enter_events:
 		if is_method_still_bound(enter_method):
 			if enter_method.get_argument_count() > 0:
-				enter_method.call(self)
+				if enter_method.call(self):
+					custom_enter_method_return_value = true
 			else:
-				enter_method.call()
+				if enter_method.call():
+					custom_enter_method_return_value = true
+	return custom_enter_method_return_value
 
 func update(delta: float, speed_scale: float = 1) -> bool:
 	var custom_update_method_return_value: bool = false
@@ -163,19 +168,23 @@ func restart():
 	self.enter()
 
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
+	var exited_from_enter_method: bool = false
 	if not self.is_running:
-		self.enter()
-	
-	if self.update(delta, speed_scale):
-		self.exit()
+		exited_from_enter_method = self.enter()
+
+	if exited_from_enter_method or self.update(delta, speed_scale):
+		# if `is_running` is false here, that means a custom update method already called this
+		# State's `exit()` method, so we should not call it again.
+		if self.is_running:
+			self.exit()
+			
+	if not self.is_running:
 		if self.on_exit_transition_method:
-			print("Running {0}'s on_exit_transition_method".format({0: self.id}))
 			if self.on_exit_transition_method.get_argument_count() == 1:
 				self.on_exit_transition_method.call(self)
 			else:
 				self.on_exit_transition_method.call()
 		return true
-		
 	return false
 
 func is_method_still_bound(method: Callable) -> bool:

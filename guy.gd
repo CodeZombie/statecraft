@@ -13,8 +13,18 @@ func move_to_origin():
 
 func _ready() -> void:
 	state_queue = StateQueue.new("movement_state_queue")
-	#state_queue.set_execution_mode(StateQueue.EXECUTION_MODE.PARALLEL)
-	state_queue.set_exit_policy(StateQueue.EXIT_POLICY.REMOVE)
+	#state_queue.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
+	#state_queue.set_exit_policy(StateQueue.ExitPolicy.REMOVE)
+	state_queue.add_state(
+		State.new("reset_pos")\
+		.add_enter_event(func():
+			self.position.x = 0
+			)\
+		.add_enter_event(func():
+			self.position.y = 0
+			return true
+			)
+	)
 	state_queue.add_state(
 		State.new("move_to_pos_a")\
 		.add_enter_event(func():

@@ -3,9 +3,9 @@ class_name StateRunner extends State
 var child_states: Array[State] = []
 var current_state_index: int = 0
 
-func enter():
-	super()
+func enter() -> bool:
 	self.current_state_index = 0
+	return super()
 
 #func update(delta: float, speed_scale: float = 1):
 	#super(delta, speed_scale)
@@ -96,7 +96,6 @@ func transition_on(from: String, to: String, condition: Variant, additional_call
 	return self
 
 func transition_on_exit(from: String, to: String) -> StateRunner:
-	print("Adding transition_on_exit for {0}: {1} -> {2}".format({0: self.id, 1: from, 2: to}))
 	self.get_state(from).on_exit_transition_method = self.transition_to.bind(to)
 	return self
 	
