@@ -137,7 +137,6 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 	var custom_update_method_return_value: bool = false
 	for update_method in self.update_events:
 		if is_method_still_bound(update_method):
-			
 			if update_method.get_argument_count() > 1:
 				if update_method.call(self, delta * speed_scale):
 					custom_update_method_return_value = true
@@ -165,13 +164,9 @@ func restart():
 
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
 	if not self.is_running:
-		if self.id == "mag_out":
-			print("enter")
 		self.enter()
 	
 	if self.update(delta, speed_scale):
-		if self.id == "mag_out":
-			print("Exited lol")
 		self.exit()
 		if self.on_exit_transition_method:
 			print("Running {0}'s on_exit_transition_method".format({0: self.id}))

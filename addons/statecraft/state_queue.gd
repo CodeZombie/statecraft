@@ -1,17 +1,52 @@
 class_name StateQueue extends StateRunner
 
-var loop = false
+enum EXECUTION_MODE {SERIAL, PARALLEL}
+enum EXIT_POLICY {KEEP, REMOVE}
+
+var _execution_mode: EXECUTION_MODE = EXECUTION_MODE.SERIAL
+var _exit_policy: EXIT_POLICY = EXIT_POLICY.KEEP
+var _parallel_exited_states: Array[State] = []
+
+func enter():
+	self.current_state_index = 0
+	self._parallel_exited_states = []
+	super()
 
 func update(delta: float, speed_scale: float = 1.0) -> bool:
 	var r_val: bool = super(delta, speed_scale)
 	if r_val:
 		return true
-
-	if self.get_current_state().run(delta, speed_scale):
-		if not self.advance() and loop == false:
+	if self._execution_mode == EXECUTION_MODE.SERIAL:
+		var current_state: State = self.get_current_state()
+		if current_state:
+			if self.get_current_state().run(delta, speed_scale):
+				if self._exit_policy == EXIT_POLICY.REMOVE:
+					self.child_states.remove_at(self.child_states.find(self.get_current_state()))
+				else:
+					if not self.advance():
+						return true
+	else:
+		var running_states: int = 0
+		for state in self.child_states:
+			if state not in self._parallel_exited_states:
+				running_states += 1
+				if state.run(delta, speed_scale):
+					running_states -= 1
+					if self._exit_policy == EXIT_POLICY.REMOVE:
+						self.child_states.remove_at(self.child_states.find(self.get_current_state()))
+					self._parallel_exited_states.append(state)
+		if running_states == 0:
 			return true
+			
 	return false
-		
+	
+func set_execution_mode(execution_mode: EXECUTION_MODE) -> StateQueue:
+	self._execution_mode = execution_mode
+	return self
+	
+func set_exit_policy(exit_policy: EXIT_POLICY) -> StateQueue:
+	self._exit_policy = exit_policy
+	return self
 
 func advance_on(from: String, condition: Variant) -> StateQueue:
 	if condition is String:
@@ -30,14 +65,8 @@ func advance() -> bool:
 	
 func get_next_state_id() -> Variant:
 	if self.current_state_index == len(self.child_states) - 1:
-		if self.loop:
-			return self.child_states[0].id
 		return null
 	return self.child_states[self.current_state_index + 1].id
-
-func enter():
-	self.current_state_index = 0
-	super()
 	
 #func add_state(state: State) -> StateRunner:
 	#super(state)

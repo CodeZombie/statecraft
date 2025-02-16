@@ -13,8 +13,10 @@ func move_to_origin():
 
 func _ready() -> void:
 	state_queue = StateQueue.new("movement_state_queue")
+	#state_queue.set_execution_mode(StateQueue.EXECUTION_MODE.PARALLEL)
+	state_queue.set_exit_policy(StateQueue.EXIT_POLICY.REMOVE)
 	state_queue.add_state(
-		State.new("Fuck")\
+		State.new("move_to_pos_a")\
 		.add_enter_event(func():
 			self.scale = Vector2(1,1)
 			self.position.x = 300
@@ -26,12 +28,12 @@ func _ready() -> void:
 		)\
 	#state_queue = StateQueue.new("movement_state_queue")\
 	.add_state(
-		TweenState.new("move_to_pos_a", self, func(tween):
+		TweenState.new("move_to_pos_b", self, func(tween):
 			tween.tween_property(self, "scale", Vector2(2, 2), 2)
 			)\
 		.add_update_event(func(state, _delta):
 			self.position = lerp(self.position, pos_b.position, speed * _delta)
-			if self.position.distance_to(pos_a.position) < 10:
+			if self.position.distance_to(pos_b.position) < 10:
 				state.exit())
 		)\
 		

@@ -52,9 +52,16 @@ func get_current_state() -> State:
 	return null
 	
 func add_state(state: State) -> StateRunner:
+	return self.add_state_back(state)
+
+func add_state_back(state: State) -> StateRunner:
 	self.child_states.push_back(state)
 	return self
-
+	
+func add_state_front(state: State) -> StateRunner:
+	self.child_states.push_front(state)
+	return self
+	
 func transition_to(state_id: String) -> StateRunner:
 	if not self.get_current_state():
 		return
