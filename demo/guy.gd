@@ -12,7 +12,7 @@ func move_to_origin():
 #TODO: transition_to and on_message should be able to handle multiple messages:
 
 func _ready() -> void:
-	state_queue = StateQueue.new("movement_state_queue")
+	state_queue = StateQueue.new("movement_state_queue").set_exit_policy(StateQueue.ExitPolicy.REMOVE)
 	#state_queue.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
 	#state_queue.set_exit_policy(StateQueue.ExitPolicy.REMOVE)
 	state_queue.add_state(
@@ -22,7 +22,6 @@ func _ready() -> void:
 			)\
 		.add_enter_event(func():
 			self.position.y = 0
-			print("reset_pos enter_event ran")
 			)
 	)
 	state_queue.add_state(
@@ -31,11 +30,13 @@ func _ready() -> void:
 			self.scale = Vector2(1,1)
 			self.position.x = 300
 			)
-		.add_update_event(func(delta: float):
+		.add_update_event(func(state: State, delta: float):
 			self.position = lerp(self.position, pos_a.position, speed * delta)
-			return self.position.distance_to(pos_a.position) < 10
+			if self.position.distance_to(pos_a.position) < 10:
+				state.emit("finished_moving")
 			)
 		)\
+	.advance_on("move_to_pos_a", "move_to_pos_a.finished_moving")\
 	#state_queue = StateQueue.new("movement_state_queue")\
 	.add_state(
 		TweenState.new("move_to_pos_b", self, func(tween):

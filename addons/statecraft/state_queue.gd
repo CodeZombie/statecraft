@@ -7,8 +7,32 @@ var _execution_mode: ExecutionMode = ExecutionMode.SERIAL
 var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 var _parallel_exited_states: Array[State] = []
 
+var _child_states: Array[State] = []
+var _exited_child_states: Array[State] = []
+
+func add_state(state: State) -> StateRunner:
+	return self.add_state_back(state)
+
+func add_state_back(state: State) -> StateRunner:
+	self._child_states.push_back(state)
+	return self
+	
+func add_state_front(state: State) -> StateRunner:
+	self._child_states.push_front(state)
+	return self
+
+func get_current_state() -> State:
+	if len(self._child_states) > 0:
+		return self._child_states[0]
+	return null
+	
+func get_all_states() -> Array[State]:
+	return self._exited_child_states + self._child_states
+
 func enter() -> bool:
-	self.current_state_index = 0
+	self._child_states = self._exited_child_states + self._child_states
+	self._exited_child_states = []
+	
 	self._parallel_exited_states = []
 	return super()
 
@@ -21,20 +45,17 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 		var current_state: State = self.get_current_state()
 		if current_state:
 			if self.get_current_state().run(delta, speed_scale):
-				if self._exit_policy == ExitPolicy.REMOVE:
-					self.child_states.remove_at(self.child_states.find(self.get_current_state()))
-				else:
-					if not self.advance():
-						return true
+				if not self.advance():
+					return true
 	else:
 		var running_states: int = 0
-		for state in self.child_states:
+		for state in self._child_states:
 			if state not in self._parallel_exited_states:
 				running_states += 1
 				if state.run(delta, speed_scale):
 					running_states -= 1
 					if self._exit_policy == ExitPolicy.REMOVE:
-						self.child_states.remove_at(self.child_states.find(self.get_current_state()))
+						self._child_states.remove_at(self._child_states.find(self.get_current_state()))
 					self._parallel_exited_states.append(state)
 		if running_states == 0:
 			return true
@@ -53,15 +74,20 @@ func advance_on(from: String, condition: Variant) -> StateQueue:
 	if condition is String:
 		self.on_message(condition, self.advance)
 	else:
-		var target_state: State = self.get_state(from)
-		target_state.on(condition, self.advance)
+		for state in self.get_states(from):
+			state.on(condition, self.advance)
 	return self
 	
 func advance() -> bool:
-	var next_state_id: Variant = self.get_next_state_id()
-	if next_state_id == null:
+	var current_state: State = self._child_states.pop_front()
+	current_state.immediate_exit()
+	
+	if self._exit_policy == ExitPolicy.KEEP:
+		self._exited_child_states.push_back(current_state)
+	
+	if len(self._child_states) == 0:
 		return false
-	self.transition_to(self.get_next_state_id())
+	
 	return true
 	
 func get_next_state_id() -> Variant:
@@ -88,7 +114,7 @@ func skip_all_skippable_states():
 func clear():
 	var current_state = self.get_current_state()
 	if current_state:
-		current_state.exit()
+		current_state.immediate_exit()
 	self.child_states.clear()
 
 func copy(new_id: String = self.id, _new_state = null) -> StateQueue:

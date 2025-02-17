@@ -178,9 +178,16 @@ func exit() -> bool:
 					exit_method.call()
 		return true
 	return false
+	
+func immediate_exit():
+	# TODO: rename to "exit_and_reset()"
+	if self.status == StateStatus.ENTERED:
+		self.exit()
+	if self.status == StateStatus.EXITED:
+		self.status = StateStatus.READY
 
 func restart():
-	self.exit()
+	self.immediate_exit()
 	self.enter()
 
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):

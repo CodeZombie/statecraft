@@ -68,10 +68,7 @@ func _ready() -> void:
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(delta: float) -> void:
 	gun_state_machine.run(delta, 1.0)
-	self.debug_label.text = str(Engine.get_frames_per_second()) + " fps\n"
-	self.debug_label.text += "trigger_pressed: " + str(trigger_pressed) + "\n" + "magazine_pressed: " + str(magazine_pressed) + "\n" + "loaded_rounds: " + str(loaded_rounds) + "\n" + "Current State: " + str(gun_state_machine.get_current_state().id)
-	self.debug_label.text += "\n"
-	self.debug_label.text += self.gun_state_machine.as_string()
+
 	self.queue_redraw()
 
 func _input(event: InputEvent) -> void:
