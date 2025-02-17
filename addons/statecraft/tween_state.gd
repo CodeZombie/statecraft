@@ -8,6 +8,7 @@ var _tween_execution_position: State.ExecutionPosition = State.ExecutionPosition
 
 func _init(state_id: String, scene_node: Node, tween_definition_method: Callable):
 	super(state_id)
+	self.keep_alive()
 	self.scene_node = scene_node
 	self.tween_definition_method = tween_definition_method
 
@@ -47,9 +48,9 @@ func update(delta: float, speed_scale: float = 1):
 	return false
 
 func exit():
-	self.kill()
-	super()
-
+	if super():
+		self.kill()
+	
 func copy(new_id: String = self.id, _new_state = null):
 	return super(new_id, TweenState.new(new_id, self.scene_node, self.tween_definition_method) if not _new_state else _new_state)
 

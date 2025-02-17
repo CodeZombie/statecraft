@@ -5,6 +5,7 @@ var _elapsed: float
 
 func _init(id: String, duration: float):
 	super(id)
+	self.keep_alive()
 	self.duration = duration
 
 func enter() -> bool:

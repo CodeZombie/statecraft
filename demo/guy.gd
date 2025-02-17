@@ -22,7 +22,7 @@ func _ready() -> void:
 			)\
 		.add_enter_event(func():
 			self.position.y = 0
-			return true
+			print("reset_pos enter_event ran")
 			)
 	)
 	state_queue.add_state(

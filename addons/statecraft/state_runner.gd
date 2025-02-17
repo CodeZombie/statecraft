@@ -3,6 +3,10 @@ class_name StateRunner extends State
 var child_states: Array[State] = []
 var current_state_index: int = 0
 
+func _init(id: String):
+	super(id)
+	self.keep_alive()
+
 func enter() -> bool:
 	self.current_state_index = 0
 	return super()
@@ -14,11 +18,11 @@ func enter() -> bool:
 		#self.get_current_state().run(delta, speed_scale)
 
 func exit():
-	super()
-	var current_state = self.get_current_state()
-	
-	if current_state and current_state.is_running:
-		current_state.exit()
+	if super():
+		var current_state = self.get_current_state()
+		
+		if current_state:
+			current_state.exit()
 		
 func on_message(message_path: String, action: Callable):
 	var path_components: Array = Array(message_path.split("."))
@@ -66,7 +70,7 @@ func transition_to(state_id: String) -> StateRunner:
 	if not self.get_current_state():
 		return
 	var current_state = self.get_current_state()
-	if current_state and current_state.is_running:
+	if current_state:
 		current_state.exit()
 	self.current_state_index = self.get_state_index(state_id)
 	if self.current_state_index == -1:
@@ -75,10 +79,12 @@ func transition_to(state_id: String) -> StateRunner:
 
 func transition_dynamic(from: String, condition: Callable) -> StateRunner:
 	self.actions.append(func():
-		if self.get_current_state().id == from:
-			var return_value = condition.call(self) if condition.get_argument_count() > 0 else condition.call()
-			if return_value:
-				self.transition_to(return_value))
+		var current_state: State = self.get_current_state()
+		if current_state:
+			if self.get_current_state().id == from and current_state.status == StateStatus.ENTERED:
+				var return_value = condition.call(self) if condition.get_argument_count() > 0 else condition.call()
+				if return_value:
+					self.transition_to(return_value))
 	return self
 		
 func transition_on(from: String, to: String, condition: Variant, additional_callable_condition: Variant = null) -> StateRunner:

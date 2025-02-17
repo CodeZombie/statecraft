@@ -25,13 +25,13 @@ func _ready() -> void:
 	.add_update_event(
 		func(_delta): 
 			$GunBody.position += $GunBody.position.direction_to(self.gunbody_start_position) * $GunBody.position.distance_to(self.gunbody_start_position) * 20 * _delta)\
-	.add_state(State.new("idle"))\
+	.add_state(State.new("idle").keep_alive())\
 	.from("idle").to("reload").on(self.magazine_pressed)\
 	.from("idle").to_dynamic(func():
 		if self.trigger_pressed:
 			if self.loaded_rounds == 0:
 				return "magazine_empty_click"
-			return "jammed" if randf() > 0.98 else "fire_round")\
+			return "jammed" if randf() > 0.95 else "fire_round")\
 			
 	.add_state(
 		TimerState.new("magazine_empty_click", self.firing_interval)\
@@ -41,7 +41,7 @@ func _ready() -> void:
 	.add_state(
 		StateMachine.new("jammed")
 		.add_state(
-			State.new("idle")
+			State.new("idle").keep_alive()
 			.emit_on("clearing_jam", self.magazine_pressed))\
 		.add_state(
 			TimerState.new("click", firing_interval)

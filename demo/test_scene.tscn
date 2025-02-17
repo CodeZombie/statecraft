@@ -2,7 +2,7 @@
 
 [ext_resource type="Texture2D" uid="uid://cuolgs6oqu5jq" path="res://icon.svg" id="1_vduxx"]
 [ext_resource type="Script" uid="uid://bc3k8bwt82lu4" path="res://demo/guy.gd" id="2_xdm2f"]
-[ext_resource type="Texture2D" path="res://assets/gun_body.png" id="3_cnhne"]
+[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://demo/assets/gun_body.png" id="3_cnhne"]
 [ext_resource type="Script" uid="uid://cwg5cenqc78q8" path="res://demo/held_object.gd" id="4_m13i4"]
 
 [node name="test_scene" type="Node2D"]

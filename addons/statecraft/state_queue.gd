@@ -16,9 +16,7 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 	var r_val: bool = super(delta, speed_scale)
 	if r_val:
 		return true
-		
-	print(self.get_current_state().id)
-		
+				
 	if self._execution_mode == ExecutionMode.SERIAL:
 		var current_state: State = self.get_current_state()
 		if current_state:
@@ -88,7 +86,10 @@ func skip_all_skippable_states():
 		state_queue.skip_all_skippable_events()
 	
 func clear():
-	self.queue.clear()
+	var current_state = self.get_current_state()
+	if current_state:
+		current_state.exit()
+	self.child_states.clear()
 
 func copy(new_id: String = self.id, _new_state = null) -> StateQueue:
 	return super(new_id, StateQueue.new(new_id) if not _new_state else _new_state)

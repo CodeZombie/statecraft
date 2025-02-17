@@ -2,6 +2,8 @@ class_name State
 
 enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
 
+enum StateStatus {READY, ENTERED, EXITED}
+
 # TODO: CHeck to see if elapsed_runtime is accurate!!!!!
 
 # NOTES:
@@ -15,10 +17,11 @@ var exit_events: Array[Callable] = []
 var on_exit_transition_method: Callable
 var skippable: bool
 var created_by: String
-var is_running: bool = false
+var status: StateStatus = StateStatus.READY
 var props: Dictionary = {}
 var actions: Array[Callable] = []
 var message_handlers: Dictionary[String, Array] = {}
+var _exit_after_enter_if_no_update_events: bool = true
 
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
@@ -76,8 +79,8 @@ func on_message(message_path: String, action: Callable) -> State:
 	return self
 	
 func on_signal(sig: Signal, action: Callable) -> State:
-	sig.connect(func(): 
-		if self.is_running: 
+	sig.connect(func():
+		if self.status == StateStatus.ENTERED: 
 			if action.get_argument_count() > 0:
 				action.call(self)
 			else:
@@ -114,6 +117,11 @@ func clear_all_exit_methods():
 	self.exit_events.clear()
 	return self
 	
+func keep_alive() -> State:
+	## Stops the State from automatically-exiting if there are no Update Events defined.
+	self._exit_after_enter_if_no_update_events = false
+	return self
+	
 func emit(message_id: String):
 	if message_id in self.message_handlers.keys():
 		for message_handler_callable in self.message_handlers[message_id]:
@@ -124,7 +132,7 @@ func emit_on(message_id: String, condition: Variant) -> State:
 	return self
 	
 func enter() -> bool:
-	self.is_running = true
+	self.status = StateStatus.ENTERED
 	self.props = {}
 	var custom_enter_method_return_value: bool = false
 	
@@ -151,39 +159,46 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 		
 	for action in self.actions:
 		action.call()
+		
+	if self._exit_after_enter_if_no_update_events and len(self.update_events) == 0:
+		return true
 	
 	return custom_update_method_return_value
 
-func exit():
-	self.is_running = false
-	for exit_method in self.exit_events:
-		if is_method_still_bound(exit_method):
-			if exit_method.get_argument_count() == 1:
-				exit_method.call(self)
-			else:
-				exit_method.call()
+func exit() -> bool:
+	## returns true if it ran the exit routine.
+	## returns false if it's already exited.
+	if self.status == StateStatus.ENTERED:
+		self.status = StateStatus.EXITED
+		for exit_method in self.exit_events:
+			if is_method_still_bound(exit_method):
+				if exit_method.get_argument_count() == 1:
+					exit_method.call(self)
+				else:
+					exit_method.call()
+		return true
+	return false
 
 func restart():
 	self.exit()
 	self.enter()
 
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
-	var exited_from_enter_method: bool = false
-	if not self.is_running:
-		exited_from_enter_method = self.enter()
-
-	if exited_from_enter_method or self.update(delta, speed_scale):
-		# if `is_running` is false here, that means a custom update method already called this
-		# State's `exit()` method, so we should not call it again.
-		if self.is_running:
+	if self.status == StateStatus.READY:
+		if self.enter():
+			self.exit()
+		
+	if self.status == StateStatus.ENTERED:
+		if self.update(delta, speed_scale):
 			self.exit()
 			
-	if not self.is_running:
+	if self.status == StateStatus.EXITED:
 		if self.on_exit_transition_method:
 			if self.on_exit_transition_method.get_argument_count() == 1:
 				self.on_exit_transition_method.call(self)
 			else:
 				self.on_exit_transition_method.call()
+		self.status = StateStatus.READY
 		return true
 	return false
 
@@ -200,7 +215,10 @@ func as_string(indent: int = 0) -> String:
 	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.enter_events))
 
 func get_status_string() -> String:
-	return "RUNNING" if self.is_running else "READY"
+	if self.status == StateStatus.READY: return "READY"
+	if self.status == StateStatus.ENTERED: return "ENTERED"
+	if self.status == StateStatus.EXITED: return "EXITED"
+	return "UNKNOWN"
 	
 func _draw_text_with_box(text: String, position: Vector2, font_size: float, padding_size: float, node: Node2D, text_color: Color, box_color: Color) -> Vector2:
 	var text_size: Vector2 = ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
@@ -216,7 +234,8 @@ func _get_debug_draw_colors() -> Array[Color]:
 func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
 
 	var y_offset: float = 0.0
-	if self.is_running: self._debug_draw_label_running_color_fade_factor = 1.0
+	if self.status == StateStatus.ENTERED:
+		self._debug_draw_label_running_color_fade_factor = 1.0
 	else: self._debug_draw_label_running_color_fade_factor = max(0.0, self._debug_draw_label_running_color_fade_factor - delta * 3)
 	var colors = self._get_debug_draw_colors()
 	var header_size: Vector2 = self._draw_text_with_box(
@@ -233,7 +252,7 @@ func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: 
 	if rect.has_point(node.get_local_mouse_position()):
 		var info_color_b: Color = colors[1]
 		info_color_b.a = 0.5
-		y_offset += _draw_text_with_box("Is Running: {0}".format({0: self.is_running}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Status: {0}".format({0: self.get_status_string()}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
