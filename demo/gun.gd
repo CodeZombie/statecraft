@@ -106,4 +106,4 @@ func fire_round_state(state_id: String = "fire_round") -> State:
 		self.loaded_rounds -= 1)
 
 func _draw() -> void:
-	self.gun_state_machine.draw(Vector2(768, 64), self, 16, 8)
+	self.gun_state_machine.draw(self, Vector2(768, 64), 16, 8)

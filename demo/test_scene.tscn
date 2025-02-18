@@ -7,13 +7,14 @@
 
 [node name="test_scene" type="Node2D"]
 
-[node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label")]
+[node name="guy" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label", "pause_button")]
 position = Vector2(1041, 107)
 texture = ExtResource("1_vduxx")
 script = ExtResource("2_xdm2f")
 pos_a = NodePath("../pos_a")
 pos_b = NodePath("../pos_b")
-debug_label = NodePath("../Panel/VBoxContainer/Label")
+debug_label = NodePath("../Panel/VBoxContainer/state_queue_state_label")
+pause_button = NodePath("../Panel/VBoxContainer/HBoxContainer2/pause_button")
 
 [node name="Sprite2D" type="Sprite2D" parent="guy"]
 position = Vector2(64, 33)
@@ -28,8 +29,13 @@ position = Vector2(956, 513)
 position = Vector2(216, 131)
 
 [node name="Panel" type="Panel" parent="."]
-offset_right = 256.0
-offset_bottom = 256.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_right = 512.0
+offset_bottom = 512.0
+grow_horizontal = 2
+grow_vertical = 2
 
 [node name="VBoxContainer" type="VBoxContainer" parent="Panel"]
 layout_mode = 1
@@ -39,14 +45,88 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 
-[node name="HSlider" type="HSlider" parent="Panel/VBoxContainer"]
+[node name="HBoxContainer" type="HBoxContainer" parent="Panel/VBoxContainer"]
 layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+text = "Speed"
+
+[node name="HSlider" type="HSlider" parent="Panel/VBoxContainer/HBoxContainer"]
+layout_mode = 2
+size_flags_horizontal = 3
 max_value = 8.0
 step = 0.01
 value = 1.0
 
-[node name="Label" type="Label" parent="Panel/VBoxContainer"]
+[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/VBoxContainer"]
 layout_mode = 2
-text = "eeeee"
 
-[connection signal="value_changed" from="Panel/VBoxContainer/HSlider" to="guy" method="_on_h_slider_value_changed"]
+[node name="clear_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "clear"
+
+[node name="reset_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "reset"
+
+[node name="pause_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "pause"
+
+[node name="toggle_exit_policy_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "toggle exit policy"
+
+[node name="toggle_exec_mode" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "toggle exec mode"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Panel/VBoxContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "Add State:"
+
+[node name="rand_move_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "rand move"
+
+[node name="move_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "move to a"
+
+[node name="rot_90_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "rot90"
+
+[node name="gun_rot_90_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "gun rot90"
+
+[node name="grow_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "grow"
+
+[node name="shrink_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "shrink"
+
+[node name="state_queue_state_label" type="Label" parent="Panel/VBoxContainer"]
+layout_mode = 2
+size_flags_vertical = 1
+text = "StateQueue Debug"
+
+[connection signal="value_changed" from="Panel/VBoxContainer/HBoxContainer/HSlider" to="guy" method="_on_h_slider_value_changed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/clear_button" to="guy" method="_on_clear_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/reset_button" to="guy" method="_on_reset_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/pause_button" to="guy" method="_on_pause_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/toggle_exit_policy_button" to="guy" method="_on_toggle_exit_policy_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/toggle_exec_mode" to="guy" method="_on_toggle_exec_mode_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/rand_move_button" to="guy" method="_on_rand_move_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/move_button" to="guy" method="_on_move_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/rot_90_button" to="guy" method="_on_rot_90_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/gun_rot_90_button" to="guy" method="_on_gun_rot_90_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/grow_button" to="guy" method="_on_grow_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/shrink_button" to="guy" method="_on_shrink_button_pressed"]

@@ -1,7 +1,15 @@
 class_name StateMachine extends StateRunner
 
 var states: Dictionary[String, State] = {}
-var current_state_id: String 
+var _current_state_id: String
+var current_state_id: String : 
+	get:
+		return self._current_state_id
+	set(value):
+		var current_state = self.get_current_state()
+		if current_state:
+			current_state.reset()
+		self._current_state_id = value
 
 func copy(new_id: String = self.id, _new_state = null) -> StateMachine:
 	return super(new_id, StateMachine.new(new_id) if not _new_state else _new_state)
@@ -70,8 +78,5 @@ func transition_to(state_id: String) -> StateRunner:
 	if state_id not in self.states.keys():
 		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
 		
-	var current_state = self.get_current_state()
-	if current_state:
-		current_state.immediate_exit()
 	self.current_state_id = state_id
 	return self

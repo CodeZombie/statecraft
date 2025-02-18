@@ -1,16 +1,12 @@
 class_name StateRunner extends State
 
-#var child_states: Array[State] = []
-#var current_state_index: int = 0
-
 func _init(id: String):
 	super(id)
 	self.keep_alive()
 
 func enter() -> bool:
-	var current_state = self.get_current_state()
-	if current_state:
-		current_state.immediate_exit()
+	for state in self.get_all_states():
+		state.reset()
 	return super()
 
 #func update(delta: float, speed_scale: float = 1):
@@ -19,19 +15,22 @@ func enter() -> bool:
 	#if current_state:
 		#self.get_current_state().run(delta, speed_scale)
 
-func exit():
+func exit() -> bool:
 	if super():
 		var current_state = self.get_current_state()
-		
 		if current_state:
-			current_state.immediate_exit()
+			current_state.exit()
+		return true
+	return false
 			
 func get_current_state() -> State:
+	assert(false, "Cannot call `get_current_state()` on abstract StateRunner.")
 	return null
 	
 func get_all_states() -> Array[State]:
+	assert(false, "Cannot call `get_all_states()` on abstract StateRunner.")
 	return []
-		
+
 func on_message(message_path: String, action: Callable):
 	## Given a message, identified via a path (eg. gun_machine.firing.bullet_created),
 	## this method attaches the action callback to the `bullet_created` message of the `firing` state.
@@ -89,8 +88,8 @@ func copy(new_id: String = self.id, _new_state = null) -> StateRunner:
 		_new_state.add_state(child_state.copy(child_state.id))
 	return _new_state
 	
-func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
-	var y_offset = super(position, node, text_size, padding_size, delta)
+func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+	var y_offset = super(node, position, text_size, padding_size, delta)
 	var initial_y_offset = y_offset
 	var line_width: float = 4
 	for i in range(len(self.get_all_states())):
@@ -100,7 +99,7 @@ func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: 
 		var child_state_colors: Array[Color] = state._get_debug_draw_colors() 
 		node.draw_line(position + Vector2(0, y_offset + cell_height / 2), position + Vector2(indent_width, y_offset  + cell_height / 2), child_state_colors[1], line_width)
 
-		y_offset += state.draw(Vector2(position.x + indent_width, position.y + y_offset), node, text_size, padding_size, delta)
+		y_offset += state.draw(node, Vector2(position.x + indent_width, position.y + y_offset), text_size, padding_size, delta)
 
 	var colors: Array[Color] = self._get_debug_draw_colors()
 	node.draw_line(position + Vector2(line_width / 2, 0), position + Vector2(line_width / 2, y_offset), colors[1], line_width)

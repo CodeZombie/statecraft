@@ -22,7 +22,7 @@ var props: Dictionary = {}
 var actions: Array[Callable] = []
 var message_handlers: Dictionary[String, Array] = {}
 var _exit_after_enter_if_no_update_events: bool = true
-
+var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
 func copy(new_id: String = self.id, new_state = null) -> State:
@@ -176,19 +176,23 @@ func exit() -> bool:
 					exit_method.call(self)
 				else:
 					exit_method.call()
-		return true
+					
+		if self.on_exit_transition_method:
+			if self.on_exit_transition_method.get_argument_count() == 1:
+				self.on_exit_transition_method.call(self)
+			else:
+				self.on_exit_transition_method.call()
+		if self.loop:
+			self.enter()
+		else:
+			return true
 	return false
 	
-func immediate_exit():
-	# TODO: rename to "exit_and_reset()"
+func reset():
 	if self.status == StateStatus.ENTERED:
 		self.exit()
 	if self.status == StateStatus.EXITED:
 		self.status = StateStatus.READY
-
-func restart():
-	self.immediate_exit()
-	self.enter()
 
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
 	if self.status == StateStatus.READY:
@@ -200,14 +204,15 @@ func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), sp
 			self.exit()
 			
 	if self.status == StateStatus.EXITED:
-		if self.on_exit_transition_method:
-			if self.on_exit_transition_method.get_argument_count() == 1:
-				self.on_exit_transition_method.call(self)
-			else:
-				self.on_exit_transition_method.call()
-		self.status = StateStatus.READY
 		return true
+		
 	return false
+	
+func run_instantly():
+	while true:
+		if self.run(1.0, 1.0):
+			break
+	return true
 
 func is_method_still_bound(method: Callable) -> bool:
 	if method.get_object() == null:
@@ -238,7 +243,7 @@ func _get_debug_draw_colors() -> Array[Color]:
 		Color.DARK_SLATE_GRAY.lerp(Color.WHITE_SMOKE, self._debug_draw_label_running_color_fade_factor), 
 		Color.LIGHT_GRAY.lerp(Color.DEEP_SKY_BLUE, self._debug_draw_label_running_color_fade_factor)
 	]
-func draw(position: Vector2, node: Node2D, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
 
 	var y_offset: float = 0.0
 	if self.status == StateStatus.ENTERED:
