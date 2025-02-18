@@ -51,8 +51,8 @@ func _ready() -> void:
 			self.position = lerp(self.position, pos_b.position, speed * _delta)
 			if self.position.distance_to(pos_b.position) < 10:
 				state.exit())
-		.add_exit_event(func():
-			state_queue.add_state_front(TimerState.new("timer_test", 1.0)))
+		#.add_exit_event(func():
+			#state_queue.add_state_front(TimerState.new("timer_test", 1.0)))
 		)\
 	.add_state($Sprite2D.get_rotate_state())
 	#.add_state(
@@ -86,6 +86,7 @@ func _process(delta: float) -> void:
 		state_queue.run(delta, self.state_queue_speed)
 	debug_label.text = "Exit Policy: {0}\n".format({0: self.state_queue._exit_policy})
 	debug_label.text += "Execution Mode: {0}\n".format({0: self.state_queue._execution_mode})
+	debug_label.text += "Loop: {0}\n".format({0: self.state_queue.loop})
 	self.queue_redraw()
 
 func _on_h_slider_value_changed(value: float) -> void:
@@ -161,3 +162,11 @@ func _on_toggle_exec_mode_pressed() -> void:
 		self.state_queue.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
 	else:
 		self.state_queue.set_execution_mode(StateQueue.ExecutionMode.SERIAL)
+
+
+func _on_set_loop_button_pressed() -> void:
+	self.state_queue.loop = !self.state_queue.loop
+
+
+func _on_run_instantly_button_pressed() -> void:
+	self.state_queue.run_instantly()

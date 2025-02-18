@@ -182,8 +182,6 @@ func exit() -> bool:
 				self.on_exit_transition_method.call(self)
 			else:
 				self.on_exit_transition_method.call()
-		if self.loop:
-			self.enter()
 		else:
 			return true
 	return false
@@ -204,14 +202,28 @@ func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), sp
 			self.exit()
 			
 	if self.status == StateStatus.EXITED:
+		if self.loop:
+			self.status = StateStatus.READY
+			return false
 		return true
 		
 	return false
 	
-func run_instantly():
+func run_instantly(timeout_duration_s: float = 0.1):
+	var was_looping: bool = self.loop
+	self.loop = false
+	
+	var start_time: int = Time.get_ticks_msec()
+	
 	while true:
-		if self.run(1.0, 1.0):
+		if Time.get_ticks_msec() > start_time + (timeout_duration_s * 1000):
+			push_error("StateCraft Warning: run_instantly({0}) timed out.".format({0: timeout_duration_s}))
 			break
+		if self.run(0.1, 1.0):
+			break
+			
+	if was_looping:
+		self.loop = true
 	return true
 
 func is_method_still_bound(method: Callable) -> bool:

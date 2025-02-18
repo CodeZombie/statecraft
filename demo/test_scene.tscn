@@ -32,7 +32,7 @@ position = Vector2(216, 131)
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_right = 512.0
+offset_right = 650.0
 offset_bottom = 512.0
 grow_horizontal = 2
 grow_vertical = 2
@@ -74,13 +74,21 @@ text = "reset"
 layout_mode = 2
 text = "pause"
 
+[node name="run_instantly_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "run instantly"
+
 [node name="toggle_exit_policy_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
-text = "toggle exit policy"
+text = "set exit policy"
 
 [node name="toggle_exec_mode" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
 layout_mode = 2
-text = "toggle exec mode"
+text = "set exec mode"
+
+[node name="set_loop_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer2"]
+layout_mode = 2
+text = "set loop"
 
 [node name="HBoxContainer3" type="HBoxContainer" parent="Panel/VBoxContainer"]
 layout_mode = 2
@@ -122,8 +130,10 @@ text = "StateQueue Debug"
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/clear_button" to="guy" method="_on_clear_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/reset_button" to="guy" method="_on_reset_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/pause_button" to="guy" method="_on_pause_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/run_instantly_button" to="guy" method="_on_run_instantly_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/toggle_exit_policy_button" to="guy" method="_on_toggle_exit_policy_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/toggle_exec_mode" to="guy" method="_on_toggle_exec_mode_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer2/set_loop_button" to="guy" method="_on_set_loop_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/rand_move_button" to="guy" method="_on_rand_move_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/move_button" to="guy" method="_on_move_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/rot_90_button" to="guy" method="_on_rot_90_button_pressed"]
