@@ -1,0 +1,50 @@
+[gd_resource type="CodeHighlighter" format=3 uid="uid://ssrlk2l3may5"]
+
+[resource]
+number_color = Color(0.258824, 1, 0.760784, 1)
+symbol_color = Color(0.666667, 0.784314, 0.992157, 1)
+function_color = Color(0.4, 0.898039, 1, 1)
+member_variable_color = Color(0.372549, 0, 0, 1)
+keyword_colors = {
+"and": Color(1, 0.43, 0.51, 1),
+"as": Color(1, 0.43, 0.51, 1),
+"assert": Color(1, 0.43, 0.51, 1),
+"break": Color(1, 0.43, 0.51, 1),
+"breakpoint": Color(1, 0.43, 0.51, 1),
+"class": Color(1, 0.43, 0.51, 1),
+"class_name": Color(1, 0.43, 0.51, 1),
+"const": Color(1, 0.43, 0.51, 1),
+"continue": Color(1, 0.43, 0.51, 1),
+"elif": Color(1, 0.43, 0.51, 1),
+"else": Color(1, 0.43, 0.51, 1),
+"enum": Color(1, 0.43, 0.51, 1),
+"export": Color(1, 0.43, 0.51, 1),
+"extends": Color(1, 0.43, 0.51, 1),
+"for": Color(1, 0.43, 0.51, 1),
+"func": Color(1, 0.43, 0.51, 1),
+"if": Color(1, 0.54, 0.8, 1),
+"in": Color(1, 0.43, 0.51, 1),
+"is": Color(1, 0.43, 0.51, 1),
+"master": Color(1, 0.43, 0.51, 1),
+"mastersync": Color(1, 0.43, 0.51, 1),
+"match": Color(1, 0.43, 0.51, 1),
+"not": Color(1, 0.43, 0.51, 1),
+"onready": Color(1, 0.43, 0.51, 1),
+"or": Color(1, 0.43, 0.51, 1),
+"pass": Color(1, 0.54, 0.8, 1),
+"puppet": Color(1, 0.43, 0.51, 1),
+"puppetsync": Color(1, 0.43, 0.51, 1),
+"remote": Color(1, 0.43, 0.51, 1),
+"remotesync": Color(1, 0.43, 0.51, 1),
+"return": Color(1, 0.43, 0.51, 1),
+"self": Color(1, 0.43, 0.51, 1),
+"setget": Color(1, 0.43, 0.51, 1),
+"signal": Color(1, 0.43, 0.51, 1),
+"static": Color(1, 0.43, 0.51, 1),
+"sync": Color(1, 0.43, 0.51, 1),
+"tool": Color(1, 0.43, 0.51, 1),
+"var": Color(1, 0.43, 0.51, 1),
+"void": Color(1, 0.43, 0.51, 1),
+"while": Color(1, 0.43, 0.51, 1),
+"yield": Color(1, 0.43, 0.51, 1)
+}

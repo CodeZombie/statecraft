@@ -22,6 +22,21 @@ scale = Vector2(0.25, 0.25)
 texture = ExtResource("3_cnhne")
 script = ExtResource("4_m13i4")
 
+[node name="guy2" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label", "pause_button")]
+position = Vector2(45, 426)
+texture = ExtResource("1_vduxx")
+script = ExtResource("2_xdm2f")
+pos_a = NodePath("../pos_a")
+pos_b = NodePath("../pos_b")
+debug_label = NodePath("../Panel/VBoxContainer/state_queue_state_label")
+pause_button = NodePath("../Panel/VBoxContainer/HBoxContainer2/pause_button")
+
+[node name="Sprite2D" type="Sprite2D" parent="guy2"]
+position = Vector2(64, 33)
+scale = Vector2(0.25, 0.25)
+texture = ExtResource("3_cnhne")
+script = ExtResource("4_m13i4")
+
 [node name="pos_a" type="Node2D" parent="."]
 position = Vector2(956, 513)
 
@@ -33,7 +48,7 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 offset_right = 650.0
-offset_bottom = 512.0
+offset_bottom = 200.0
 grow_horizontal = 2
 grow_vertical = 2
 
@@ -55,7 +70,7 @@ text = "Speed"
 [node name="HSlider" type="HSlider" parent="Panel/VBoxContainer/HBoxContainer"]
 layout_mode = 2
 size_flags_horizontal = 3
-max_value = 8.0
+max_value = 32.0
 step = 0.01
 value = 1.0
 
@@ -121,6 +136,10 @@ text = "grow"
 layout_mode = 2
 text = "shrink"
 
+[node name="spin_and_unspin_button" type="Button" parent="Panel/VBoxContainer/HBoxContainer3"]
+layout_mode = 2
+text = "spin&unspin"
+
 [node name="state_queue_state_label" type="Label" parent="Panel/VBoxContainer"]
 layout_mode = 2
 size_flags_vertical = 1
@@ -140,3 +159,4 @@ text = "StateQueue Debug"
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/gun_rot_90_button" to="guy" method="_on_gun_rot_90_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/grow_button" to="guy" method="_on_grow_button_pressed"]
 [connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/shrink_button" to="guy" method="_on_shrink_button_pressed"]
+[connection signal="pressed" from="Panel/VBoxContainer/HBoxContainer3/spin_and_unspin_button" to="guy" method="_on_spin_and_unspin_button_pressed"]

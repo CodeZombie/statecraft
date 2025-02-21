@@ -15,10 +15,6 @@ run/main_scene="res://demo/test_scene.tscn"
 config/features=PackedStringArray("4.4", "Mobile")
 config/icon="res://icon.svg"
 
-[editor_plugins]
-
-enabled=PackedStringArray("res://addons/script-ide/plugin.cfg")
-
 [rendering]
 
 renderer/rendering_method="mobile"

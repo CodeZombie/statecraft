@@ -1,15 +1,15 @@
-class_name StateMachine extends StateRunner
+class_name StateMachine extends StateContainer
 
 var states: Dictionary[String, State] = {}
-var _current_state_id: String
-var current_state_id: String : 
+
+var current_state_id: String:
 	get:
 		return self._current_state_id
 	set(value):
 		var current_state = self.get_current_state()
 		if current_state:
 			current_state.reset()
-		self._current_state_id = value
+		current_state_id = value
 
 func copy(new_id: String = self.id, _new_state = null) -> StateMachine:
 	return super(new_id, StateMachine.new(new_id) if not _new_state else _new_state)
@@ -45,23 +45,23 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 		current_state.run(delta, speed_scale)
 	return false
 
-func transition_on_exit(from: String, to: String) -> StateRunner:
+func transition_on_exit(from: String, to: String) -> StateContainer:
 	self.get_state(from).on_exit_transition_method = self.transition_to.bind(to)
 	return self
 	
 func from(state_id: String) -> TransitionChainFrom:
 	return TransitionChainFrom.new(self, state_id)
 	
-func transition_dynamic(from: String, condition: Callable) -> StateRunner:
+func transition_dynamic(from: String, condition: Callable) -> StateContainer:
 	self.actions.append(func():
 		if self.current_state_id == from:
-			if self.get_current_state().id == from and self.get_current_state().status == StateStatus.ENTERED:
+			if self.get_current_state().id == from and self.get_current_state().status == StateStatus.RUNNING:
 				var return_value = condition.call(self) if condition.get_argument_count() > 0 else condition.call()
 				if return_value:
 					self.transition_to(return_value))
 	return self
 		
-func transition_on(from: String, to: String, condition: Variant, additional_callable_condition: Variant = null) -> StateRunner:
+func transition_on(from: String, to: String, condition: Variant, additional_callable_condition: Variant = null) -> StateContainer:
 	var transition_callable: Callable = self.transition_to.bind(to)
 	if additional_callable_condition:
 		transition_callable = func():
@@ -74,7 +74,7 @@ func transition_on(from: String, to: String, condition: Variant, additional_call
 		self.get_state(from).on(condition, transition_callable)
 	return self
 	
-func transition_to(state_id: String) -> StateRunner:
+func transition_to(state_id: String) -> StateContainer:
 	if state_id not in self.states.keys():
 		assert(false, "StateCraft Error: Tried to transition to unknown state \"{0}\"".format({0: state_id}))
 		

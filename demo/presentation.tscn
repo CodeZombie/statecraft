@@ -1,0 +1,78 @@
+[gd_scene load_steps=5 format=3 uid="uid://bu80tqtcggest"]
+
+[ext_resource type="Script" uid="uid://r704iqrc1m2c" path="res://demo/presentation.gd" id="1_otqih"]
+[ext_resource type="CodeHighlighter" uid="uid://ssrlk2l3may5" path="res://resources/gdscript_code_highlighter.tres" id="2_pujn6"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_otqih"]
+bg_color = Color(0, 0.0627451, 0.0666667, 1)
+
+[sub_resource type="Theme" id="Theme_pujn6"]
+Label/colors/font_color = Color(0.247059, 0.533333, 0.772549, 1)
+Label/font_sizes/font_size = 48
+
+[node name="Presentation" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_otqih")
+
+[node name="root_panel" type="Panel" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_otqih")
+
+[node name="MarginContainer" type="MarginContainer" parent="root_panel"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/margin_left = 32
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 32
+theme_override_constants/margin_bottom = 16
+
+[node name="root_vbox_container" type="VBoxContainer" parent="root_panel/MarginContainer"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="root_panel/MarginContainer/root_vbox_container"]
+layout_mode = 2
+theme = SubResource("Theme_pujn6")
+text = "StateCraft"
+
+[node name="CodeEdit" type="CodeEdit" parent="root_panel/MarginContainer/root_vbox_container"]
+layout_mode = 2
+size_flags_vertical = 3
+text = "extends Control
+
+var root_state_queue: StateQueue = StateQueue.new(\"root\")
+
+var x = 5
+
+func _ready() -> void:
+	root_state_queue.add_state(State.new(\"intro_state_queue\"))
+	
+func _process(delta: float) -> void:
+	if self.root_state_queue.run(delta):
+		print(\"Root state queue exited.\")
+		
+func get_intro_state_queue():
+	print(5 + 5)
+	
+	if 5 and 4:
+		print(\"Nice\")
+	get_stack()
+	get_intro_state_queue()
+	pass
+"
+syntax_highlighter = ExtResource("2_pujn6")
+highlight_all_occurrences = true
+highlight_current_line = true

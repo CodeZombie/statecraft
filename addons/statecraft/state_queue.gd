@@ -1,4 +1,4 @@
-class_name StateQueue extends StateRunner
+class_name StateQueue extends StateContainer
 
 enum ExecutionMode {SERIAL, PARALLEL}
 enum ExitPolicy {KEEP, REMOVE}
@@ -8,18 +8,26 @@ var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 
 var _child_states: Array[State] = []
 
-func add_state(state: State) -> StateRunner:
+func add_state(state: State) -> StateContainer:
+	self.listen_for_signals(state)
 	return self.add_state_back(state)
 
-func add_state_back(state: State) -> StateRunner:
+func add_state_back(state: State) -> StateContainer:
 	self._child_states.push_back(state)
 	return self
 	
-func add_state_front(state: State, run_immediately: bool = true) -> StateRunner:
+func add_state_front(state: State, run_immediately: bool = true) -> StateContainer:
 	self._child_states.push_front(state)
 	if not run_immediately:
 		state.status = StateStatus.EXITED
 	return self
+	
+func get_running_states() -> Array[State]:
+	var running_states: Array[State] = []
+	for state in self._child_states:
+		if state.status == StateStatus.RUNNING:
+			running_states.append(state)
+	return running_states
 
 func get_current_state() -> State:
 	for state in self._child_states:
@@ -29,6 +37,12 @@ func get_current_state() -> State:
 	
 func get_all_states() -> Array[State]:
 	return self._child_states
+	
+func have_all_states_exited() -> bool:
+	for state in self._child_states:
+		if state.status != StateStatus.EXITED:
+			return false
+	return true
 
 func update(delta: float, speed_scale: float = 1.0) -> bool:
 	var r_val: bool = super(delta, speed_scale)
@@ -46,8 +60,8 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 			if state.run(delta, speed_scale):
 				if self._exit_policy == ExitPolicy.REMOVE:
 					self._child_states.remove_at(self._child_states.find(state))
-
-	if not self.get_current_state():
+	
+	if self.have_all_states_exited():
 		return true
 			
 	return false
@@ -57,54 +71,15 @@ func set_execution_mode(execution_mode: ExecutionMode) -> StateQueue:
 	return self
 	
 func set_exit_policy(exit_policy: ExitPolicy) -> StateQueue:
+	for state in self._child_states.duplicate():
+		if state.status == StateStatus.EXITED:
+			self._child_states.remove_at(self._child_states.find(state))
 	self._exit_policy = exit_policy
 	return self
-
-#func advance_on(from: String, condition: Variant) -> StateQueue:
-	#if condition is String:
-		#self.on_message(condition, self.advance)
-	#else:
-		#for state in self.get_states(from):
-			#state.on(condition, self.advance)
-	#return self
-	#
-#func advance() -> bool:
-	#var current_state: State = self._child_states.pop_front()
-	#current_state.reset()
-	#
-	#if self._exit_policy == ExitPolicy.KEEP:
-		#self._exited_child_states.push_back(current_state)
-	#
-	#if len(self._child_states) == 0:
-		#return false
-	#
-	#return true
-	
-func get_next_state_id() -> Variant:
-	if self.current_state_index == len(self.child_states) - 1:
-		return null
-	return self.child_states[self.current_state_index + 1].id
-	
-#func add_state(state: State) -> StateRunner:
-	#super(state)
-	#state.add_exit_event(self.advance)
-	#return self
-	
-func process_immediately():
-	self.skip_all_skippable_states()
-	for event in self.queue:
-		event.process_immediately()
-	self.queue.clear()
-	
-func skip_all_skippable_states():
-	self.queue = self.queue.filter(func(event): return not event.skippable)
-	for state_queue in self.queue.filter(func(event): return event is StateQueue):
-		state_queue.skip_all_skippable_events()
 	
 func clear():
-	var current_state = self.get_current_state()
-	if current_state:
-		current_state.exit()
+	for state in self.get_running_states():
+		state.exit()
 	self._child_states.clear()
 
 func copy(new_id: String = self.id, _new_state = null) -> StateQueue:

@@ -1,15 +1,16 @@
 class_name State
+## A state.
+##
+## Long description of what a state is.
+
+signal signal_emitted(signal_path: StringName, args: Array)
 
 enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
 
-enum StateStatus {READY, ENTERED, EXITED}
+enum StateStatus {READY, RUNNING, EXITED}
 
 # TODO: CHeck to see if elapsed_runtime is accurate!!!!!
 
-# NOTES:
-# when calling _update from an eventqueue, we need to make sure we always pass the real delta time and time_scale.
-# dont ever give it `delta * time_scale` - that should only ever happen when calling the user's custom method or calculating event runtime.
-		
 var id: String
 var enter_events: Array[Callable] = []
 var update_events: Array[Callable] = []
@@ -20,11 +21,14 @@ var created_by: String
 var status: StateStatus = StateStatus.READY
 var props: Dictionary = {}
 var actions: Array[Callable] = []
-var message_handlers: Dictionary[String, Array] = {}
+#var message_handlers: Dictionary[String, Array] = {}
 var _exit_after_enter_if_no_update_events: bool = true
 var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
+## Copies a state blah blah blah
+##
+## Long description of the copy method...
 func copy(new_id: String = self.id, new_state = null) -> State:
 	new_state = State.new(new_id) if not new_state else new_state
 	new_state.skippable = self.skippable
@@ -38,16 +42,64 @@ func copy(new_id: String = self.id, new_state = null) -> State:
 
 func _init(id: String):
 	self.id = id
+	
+	#self.add_user_signal(StringName("signal_emitted"), [
+		#{"name": "signal_path", "type": TYPE_STRING_NAME},
+		#{"name": "args", "type": TYPE_ARRAY}
+		#])
+		#
+	#for signal_dict in signals:
+		#self.add_user_signal(signal_dict["name"], signal_dict["args"] or [])
+		#pass
 
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-func add_to_runner(state_runner: StateRunner) -> State:
+func add_state_signal(signal_name: StringName, arguments: Array = []) -> State:
+	## Creates a signal for this State
+	self.add_user_signal(signal_name, arguments)
+	
+	# Disgusting horrible nightmare code because godot's variadic function PR has
+	# been in review for four years and probably won't be out until 4.5
+	self.connect(signal_name, func(arg1=null, arg2=null, arg3=null, arg4=null, arg5=null, arg6=null, arg7=null, arg8=null):
+		var args = []
+		for argument in [arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8]:
+			if argument != null:
+				args.push_back(argument)
+		self.emit_signal(StringName("signal_emitted"), signal_name, args)
+		)
+	return self
+	
+func connect(signal_path: StringName, callable: Callable, flags: int = 0) -> int:
+	if signal_path == StringName("signal_emitted"):
+		return super(signal_path, callable, flags)
+		
+	var signal_path_as_string: String = String(signal_path)
+	if not signal_path_as_string.contains("."):
+		return super(signal_path, callable, flags)
+	
+	return super(
+		"signal_emitted", 
+		func(signal_path_: StringName, args: Array = []):
+			if signal_path_ == signal_path:
+				callable.callv(args),
+			flags
+		)
+
+#func emit(signal_name: StringName, args: Array):
+	#self.emit_signal.bindv([signal_name] + args)
+
+
+func add_to_runner(state_runner: StateContainer) -> State:
 	state_runner.add_state(self)
 	return self
 	
 func add_enter_event(enter_method: Callable) -> State:
 	self.enter_events.append(enter_method)
+	return self
+	
+func add_enter_event_closure(enter_closure: Callable) -> State:
+	self.enter_events.append(enter_closure.call())
 	return self
 
 func add_update_event(update_event: Callable) -> State:
@@ -58,29 +110,55 @@ func add_exit_event(exit_event: Callable) -> State:
 	self.exit_events.append(exit_event)
 	return self
 	
-func get_state_from_message_path(message_path: String) -> State:
-	var path_components: Array = Array(message_path.split("."))
-	var message_id: String = path_components.pop_back()
-	if len(path_components) > 0:
-		assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
-	return self
-
-func on_message(message_path: String, action: Callable) -> State:
-	var path_components: Array = Array(message_path.split("."))
-	var message_id: String = path_components.pop_back()
+#func get_state_from_message_path(message_path: String) -> State:
+	#var path_components: Array = Array(message_path.split("."))
+	#var message_id: String = path_components.pop_back()
+	#if len(path_components) > 0:
+		#assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
+	#return self
 	
-	if len(path_components) > 0:
-		assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
-	
-	if message_id not in self.message_handlers.keys():
-		self.message_handlers[message_id] = []
+#func on_state_signal(signal_name: StringName, callable: Callable, flags: ConnectFlags = 0) -> State:
+	#if not self.has_user_signal(signal_name):
+		#self.add_user_signal(signal_name)
+	#if not self.is_connected(signal_name, callable):
+		#var wrapped_callable: Callable = func():
+			#if self.status != StateStatus.READY:
+				#callable.call()
+		#self.connect(signal_name, wrapped_callable, flags)
+	#return self
+	#
+#func emit(signal_name: StringName):
+	#if self.has_signal(signal_name):
+		#self.emit_signal(signal_name)
 		
-	self.message_handlers[message_id].append(action)
-	return self
+#func on_message(message_name: StringName, callable: Callable, flags: ConnectFlags = 0) -> State:
+	#self.connect(StringName("message_emitted"), func(message_name_: StringName):
+		#if message_name == message_name_:
+			#callable.call(),
+		#flags)
+	#return self
+
+#func emit(message_name: StringName, ):
+	#self.emit_signal(StringName("message_emitted"), message_name)
+
+#func on_message(message_path: String, action: Callable) -> State:
+	## TODO: wrap the `action` callable in a function that checks to make sure this state is `RUNNING`
+	## We don't want inactive states responding to messages.
+	#var path_components: Array = Array(message_path.split("."))
+	#var message_id: String = path_components.pop_back()
+	#
+	#if len(path_components) > 0:
+		#assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
+	#
+	#if message_id not in self.message_handlers.keys():
+		#self.message_handlers[message_id] = []
+		#
+	#self.message_handlers[message_id].append(action)
+	#return self
 	
 func on_signal(sig: Signal, action: Callable) -> State:
 	sig.connect(func():
-		if self.status == StateStatus.ENTERED: 
+		if self.status == StateStatus.RUNNING: 
 			if action.get_argument_count() > 0:
 				action.call(self)
 			else:
@@ -98,7 +176,8 @@ func on(condition: Variant, action: Callable) -> State:
 		self.on_signal(condition, action)
 		
 	elif condition is String:
-		self.on_message(condition, action)
+		self.connect(condition, action)
+		#self.on_message(condition, action)
 		
 	elif condition is Callable:
 		self.on_callable(condition, action)
@@ -122,17 +201,17 @@ func keep_alive() -> State:
 	self._exit_after_enter_if_no_update_events = false
 	return self
 	
-func emit(message_id: String):
-	if message_id in self.message_handlers.keys():
-		for message_handler_callable in self.message_handlers[message_id]:
-			message_handler_callable.call()
+#func emit(message_id: String):
+	#if message_id in self.message_handlers.keys():
+		#for message_handler_callable in self.message_handlers[message_id]:
+			#message_handler_callable.call()
 			
 func emit_on(message_id: String, condition: Variant) -> State:
 	self.on(condition, self.emit.bind(message_id))
 	return self
 	
 func enter() -> bool:
-	self.status = StateStatus.ENTERED
+	self.status = StateStatus.RUNNING
 	self.props = {}
 	var custom_enter_method_return_value: bool = false
 	
@@ -150,11 +229,14 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 	var custom_update_method_return_value: bool = false
 	for update_method in self.update_events:
 		if is_method_still_bound(update_method):
-			if update_method.get_argument_count() > 1:
-				if update_method.call(self, delta * speed_scale):
+			if update_method.get_argument_count() == 0:
+				if update_method.call():
+					custom_update_method_return_value = true
+			elif update_method.get_argument_count() == 1:
+				if update_method.call(delta * speed_scale):
 					custom_update_method_return_value = true
 			else:
-				if update_method.call(delta * speed_scale):
+				if update_method.call(delta * speed_scale, self):
 					custom_update_method_return_value = true
 		
 	for action in self.actions:
@@ -165,10 +247,16 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 	
 	return custom_update_method_return_value
 
+
+## Handles the exit routine for the state.
+##
+## This method changes the state's status to EXITED if it was previously RUNNING. 
+## It then calls all the exit methods bound to this state. 
+## If an `on_exit_transition_method` is defined, it will be called as well.
+## 
+## Returns: `true` if the exit routine was executed, `false` if the state was already exited.
 func exit() -> bool:
-	## returns true if it ran the exit routine.
-	## returns false if it's already exited.
-	if self.status == StateStatus.ENTERED:
+	if self.status == StateStatus.RUNNING:
 		self.status = StateStatus.EXITED
 		for exit_method in self.exit_events:
 			if is_method_still_bound(exit_method):
@@ -176,7 +264,11 @@ func exit() -> bool:
 					exit_method.call(self)
 				else:
 					exit_method.call()
-					
+		
+		# TODO: I hate this. Is there some way we can get rid of this on_exit_transition_method?
+		#	perhaps we can just emit a signal after the exit() method finishes running its callbacks,
+		# 	and anything can connect to that callback? That seems way more flexible and we dont need this special-case
+		#	logic.
 		if self.on_exit_transition_method:
 			if self.on_exit_transition_method.get_argument_count() == 1:
 				self.on_exit_transition_method.call(self)
@@ -186,18 +278,26 @@ func exit() -> bool:
 			return true
 	return false
 	
+	
+## Resets the State to make it ready for running later.
 func reset():
-	if self.status == StateStatus.ENTERED:
+	if self.status == StateStatus.RUNNING:
 		self.exit()
 	if self.status == StateStatus.EXITED:
 		self.status = StateStatus.READY
 
+
+## Executes the state logic for a single frame.
+##
+## Parameters:
+## [param delta]: The time elapsed since the last frame. Defaults to the main loop's process delta time.
+## [param speed_scale]: A multiplier for the delta time to control the speed of the state execution. Defaults to 1.0.
 func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), speed_scale: float = 1.0):
 	if self.status == StateStatus.READY:
 		if self.enter():
 			self.exit()
 		
-	if self.status == StateStatus.ENTERED:
+	if self.status == StateStatus.RUNNING:
 		if self.update(delta, speed_scale):
 			self.exit()
 			
@@ -209,7 +309,7 @@ func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), sp
 		
 	return false
 	
-func run_instantly(timeout_duration_s: float = 0.1):
+func run_instantly(timeout_duration_s: float = 0.25):
 	var was_looping: bool = self.loop
 	self.loop = false
 	
@@ -240,7 +340,7 @@ func as_string(indent: int = 0) -> String:
 
 func get_status_string() -> String:
 	if self.status == StateStatus.READY: return "READY"
-	if self.status == StateStatus.ENTERED: return "ENTERED"
+	if self.status == StateStatus.RUNNING: return "RUNNING"
 	if self.status == StateStatus.EXITED: return "EXITED"
 	return "UNKNOWN"
 	
@@ -258,7 +358,7 @@ func _get_debug_draw_colors() -> Array[Color]:
 func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
 
 	var y_offset: float = 0.0
-	if self.status == StateStatus.ENTERED:
+	if self.status == StateStatus.RUNNING:
 		self._debug_draw_label_running_color_fade_factor = 1.0
 	else: self._debug_draw_label_running_color_fade_factor = max(0.0, self._debug_draw_label_running_color_fade_factor - delta * 3)
 	var colors = self._get_debug_draw_colors()
@@ -280,6 +380,6 @@ func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16,
 		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
-		y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		#y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 
 	return y_offset
