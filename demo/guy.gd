@@ -21,6 +21,7 @@ func _ready() -> void:
 	#state_queue.set_exit_policy(StateQueue.ExitPolicy.REMOVE)
 	state_queue.add_state(
 		State.new("move_to_pos_a")\
+		.add_signal("finished_moving", [{"name": "x", "type": TYPE_INT}])
 		.add_enter_event(func():
 			self.scale = Vector2(1,1)
 			self.position.x = 300
@@ -28,9 +29,9 @@ func _ready() -> void:
 		.add_update_event(func(delta: float, state: State, ):
 			self.position = lerp(self.position, pos_a.position, speed * delta)
 			if self.position.distance_to(pos_a.position) < 10:
-				state.emit("finished_moving")
-				return true
+				state.emit_signal("finished_moving", 32)
 			)
+		.on("finished_moving", func(state: State): state.exit())
 		)\
 	#.advance_on("move_to_pos_a", "move_to_pos_a.finished_moving")\
 	#state_queue = StateQueue.new("movement_state_queue")\

@@ -38,6 +38,16 @@ func get_all_states() -> Array[State]:
 	assert(false, "Cannot call `get_all_states()` on abstract StateContainer.")
 	return []
 	
+func forward_deferred_signal_connections_to_child(child_state: State, deferred_signal_connections: Array[Dictionary]) -> void:
+	for deferred_signal_connection in deferred_signal_connections:
+		var signal_path: Array[StringName] = deferred_signal_connection["signal_path"].duplicate()
+		if len(signal_path) > 1:
+			if signal_path[0] == child_state.id or signal_path[0] == StringName('*') or signal_path[0] == StringName('**'):
+				child_state.add_deferred_signal_connection(signal_path.slice(1), deferred_signal_connection['callable'], deferred_signal_connection['flags'])
+			if signal_path[0] == StringName('**'):
+				child_state.add_deferred_signal_connection(signal_path, deferred_signal_connection['callable'], deferred_signal_connection['flags'])
+
+
 #func connect_child_state(state: State):
 	#state.on_message(
 		#StringName("message_emitted"), 
@@ -65,19 +75,19 @@ func get_all_states() -> Array[State]:
 	#self.signal_connections[signal_path] = callable
 	#return self
 
-func listen_for_signals(state: State):
-	# Propagates signals from another state into this one.
-	state.connect("signal_emitted", func(signal_path: StringName, args: Array = []):
-		self.emit_signal(StringName("signal_emitted"), StringName("{0}.{1}".format({0: state.id, 1: signal_path})), args)
-		)
+#func listen_for_signals(state: State):
+	## Propagates signals from another state into this one.
+	#state.connect("signal_emitted", func(signal_path: StringName, args: Array = []):
+		#self.emit_signal(StringName("signal_emitted"), StringName("{0}.{1}".format({0: state.id, 1: signal_path})), args)
+		#)
 
-func get_state_from_message_path(message_path: String) -> State:
-	var path_components: Array = Array(message_path.split("."))
-	var message_id: String = path_components.pop_back()
-	var current_state = self
-	for path_component in path_components:
-		current_state = current_state.get_state(path_component)
-	return current_state
+#func get_state_from_message_path(message_path: String) -> State:
+	#var path_components: Array = Array(message_path.split("."))
+	#var message_id: String = path_components.pop_back()
+	#var current_state = self
+	#for path_component in path_components:
+		#current_state = current_state.get_state(path_component)
+	#return current_state
 	
 func get_states(state_id: String) -> Array[State]:
 	var matches: Array[State] = []

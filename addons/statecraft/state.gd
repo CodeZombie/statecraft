@@ -3,7 +3,7 @@ class_name State
 ##
 ## Long description of what a state is.
 
-signal signal_emitted(signal_path: StringName, args: Array)
+#signal signal_emitted(signal_path: StringName, args: Array)
 
 enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
 
@@ -26,6 +26,15 @@ var _exit_after_enter_if_no_update_events: bool = true
 var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
+# TODO: Change this to a Dictionary of [callable, flag]s. with StringName keys.
+#	this way when we need to check if a deferred signal connection has already been added to this list in
+#	`add_deferred_signal_connection`, it'll be way faster, as we wont need to loop through every single
+#	deferred connection, only the callables linked directly to that signal_path.
+var _deferred_signal_connections: Array[Dictionary] = []
+## An array of dicts describing signal connections that should be made, but can't yet
+## because the desired signal does not yet exist.
+
+
 ## Copies a state blah blah blah
 ##
 ## Long description of the copy method...
@@ -40,55 +49,53 @@ func copy(new_id: String = self.id, new_state = null) -> State:
 		new_state.add_exit_event(exit_method)
 	return new_state
 
-func _init(id: String):
+func _init(id: String, signal_names: Array = []):
 	self.id = id
 	
-	#self.add_user_signal(StringName("signal_emitted"), [
-		#{"name": "signal_path", "type": TYPE_STRING_NAME},
-		#{"name": "args", "type": TYPE_ARRAY}
-		#])
-		#
-	#for signal_dict in signals:
-		#self.add_user_signal(signal_dict["name"], signal_dict["args"] or [])
-		#pass
-
+	for signal_name in signal_names:
+		self.add_signal(signal_name)
+	
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-func add_state_signal(signal_name: StringName, arguments: Array = []) -> State:
+func add_user_signal(signal_name: String, arguments: Array = []) -> void:
 	## Creates a signal for this State
+	super(signal_name, arguments)
+	self.connect_deferred_signals()
+
+func add_signal(signal_name: String, arguments: Array = []) -> State:
 	self.add_user_signal(signal_name, arguments)
-	
-	# Disgusting horrible nightmare code because godot's variadic function PR has
-	# been in review for four years and probably won't be out until 4.5
-	self.connect(signal_name, func(arg1=null, arg2=null, arg3=null, arg4=null, arg5=null, arg6=null, arg7=null, arg8=null):
-		var args = []
-		for argument in [arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8]:
-			if argument != null:
-				args.push_back(argument)
-		self.emit_signal(StringName("signal_emitted"), signal_name, args)
-		)
 	return self
+
+func connect_deferred_signals() -> void:
+	# Connect any deferred signal connections that match this new signal's name.
+	var connected_deferred_signal_connections: Array = []
+	for deferred_signal_connection in self._deferred_signal_connections:
+		if len(deferred_signal_connection['signal_path']) == 1:
+			if self.has_user_signal(deferred_signal_connection['signal_path'][0]):
+				self.connect(deferred_signal_connection['signal_path'][0], deferred_signal_connection['callable'], deferred_signal_connection['flags'])
+				connected_deferred_signal_connections.append(deferred_signal_connection)
+				
+	for connected_deferred_signal_connection in connected_deferred_signal_connections:
+		self._deferred_signal_connections.erase(connected_deferred_signal_connection)
+
+func add_deferred_signal_connection(signal_path: Array[StringName], callable: Callable, flags: int = 0) -> void:
+	for deferred_signal_connection in self._deferred_signal_connections:
+		if deferred_signal_connection['signal_path'] == signal_path and deferred_signal_connection['callable'] == callable:
+			return
+	self._deferred_signal_connections.append({
+		"signal_path": signal_path,
+		"callable": callable,
+		"flags": flags
+	})
+	self.connect_deferred_signals()
 	
 func connect(signal_path: StringName, callable: Callable, flags: int = 0) -> int:
-	if signal_path == StringName("signal_emitted"):
+	var signal_path_array: PackedStringArray = signal_path.split(".")
+	if len(signal_path_array) == 1:
 		return super(signal_path, callable, flags)
-		
-	var signal_path_as_string: String = String(signal_path)
-	if not signal_path_as_string.contains("."):
-		return super(signal_path, callable, flags)
-	
-	return super(
-		"signal_emitted", 
-		func(signal_path_: StringName, args: Array = []):
-			if signal_path_ == signal_path:
-				callable.callv(args),
-			flags
-		)
-
-#func emit(signal_name: StringName, args: Array):
-	#self.emit_signal.bindv([signal_name] + args)
-
+	self.add_deferred_signal_connection(signal_path_array, callable, flags)
+	return 0
 
 func add_to_runner(state_runner: StateContainer) -> State:
 	state_runner.add_state(self)
@@ -110,52 +117,6 @@ func add_exit_event(exit_event: Callable) -> State:
 	self.exit_events.append(exit_event)
 	return self
 	
-#func get_state_from_message_path(message_path: String) -> State:
-	#var path_components: Array = Array(message_path.split("."))
-	#var message_id: String = path_components.pop_back()
-	#if len(path_components) > 0:
-		#assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
-	#return self
-	
-#func on_state_signal(signal_name: StringName, callable: Callable, flags: ConnectFlags = 0) -> State:
-	#if not self.has_user_signal(signal_name):
-		#self.add_user_signal(signal_name)
-	#if not self.is_connected(signal_name, callable):
-		#var wrapped_callable: Callable = func():
-			#if self.status != StateStatus.READY:
-				#callable.call()
-		#self.connect(signal_name, wrapped_callable, flags)
-	#return self
-	#
-#func emit(signal_name: StringName):
-	#if self.has_signal(signal_name):
-		#self.emit_signal(signal_name)
-		
-#func on_message(message_name: StringName, callable: Callable, flags: ConnectFlags = 0) -> State:
-	#self.connect(StringName("message_emitted"), func(message_name_: StringName):
-		#if message_name == message_name_:
-			#callable.call(),
-		#flags)
-	#return self
-
-#func emit(message_name: StringName, ):
-	#self.emit_signal(StringName("message_emitted"), message_name)
-
-#func on_message(message_path: String, action: Callable) -> State:
-	## TODO: wrap the `action` callable in a function that checks to make sure this state is `RUNNING`
-	## We don't want inactive states responding to messages.
-	#var path_components: Array = Array(message_path.split("."))
-	#var message_id: String = path_components.pop_back()
-	#
-	#if len(path_components) > 0:
-		#assert(false, "State object {0} is of type State which cannot contain children, and therefore cannot resolve message path: \"{1}\"".format({0: self.id, 1: message_path}))
-	#
-	#if message_id not in self.message_handlers.keys():
-		#self.message_handlers[message_id] = []
-		#
-	#self.message_handlers[message_id].append(action)
-	#return self
-	
 func on_signal(sig: Signal, action: Callable) -> State:
 	sig.connect(func():
 		if self.status == StateStatus.RUNNING: 
@@ -163,6 +124,21 @@ func on_signal(sig: Signal, action: Callable) -> State:
 				action.call(self)
 			else:
 				action.call())
+	return self
+	
+func discard_args(callable: Callable) -> Callable:
+	return func(a=null, b=null, c=null, d=null, e=null, f=null, g=null, h=null, i=null, j=null, k=null):
+		callable.call()
+
+func on_signal_path(signal_path: String, action: Callable) -> State:
+	# No point wrapping this in a `if self.status == StateStatus.RUNNING
+	# because signal_path can only connect to self or self.child's signals, which
+	# could never possibly emit unless they were running.
+	# And the only way they could be running is if self was running.
+	if action.get_argument_count() == 0:
+		self.connect(signal_path, discard_args(action))
+	elif action.get_argument_count() == 1:
+		self.connect(signal_path, discard_args(action.bind(self)))
 	return self
 
 func on_callable(callable: Callable, action: Callable) -> State:
@@ -176,7 +152,7 @@ func on(condition: Variant, action: Callable) -> State:
 		self.on_signal(condition, action)
 		
 	elif condition is String:
-		self.connect(condition, action)
+		self.on_signal_path(condition, action)
 		#self.on_message(condition, action)
 		
 	elif condition is Callable:
@@ -200,14 +176,9 @@ func keep_alive() -> State:
 	## Stops the State from automatically-exiting if there are no Update Events defined.
 	self._exit_after_enter_if_no_update_events = false
 	return self
-	
-#func emit(message_id: String):
-	#if message_id in self.message_handlers.keys():
-		#for message_handler_callable in self.message_handlers[message_id]:
-			#message_handler_callable.call()
-			
-func emit_on(message_id: String, condition: Variant) -> State:
-	self.on(condition, self.emit.bind(message_id))
+
+func emit_signal_on(signal_name: StringName, condition: Variant, args: Array = []) -> State:
+	self.on(condition, self.emit_signal.bindv([signal_name] + args))
 	return self
 	
 func enter() -> bool:
@@ -380,6 +351,16 @@ func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16,
 		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
-		#y_offset += _draw_text_with_box("Message Handlers: {0}".format({0: len(self.message_handlers)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		var signal_names = []
+		for signal_info in get_signal_list():
+			if not signal_info['name'] in ["script_changed", "property_list_changed"]:
+				signal_names.append(signal_info['name'])
+			
+		y_offset += _draw_text_with_box("Signals: {0}".format({0: ", ".join(PackedStringArray(signal_names))}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+
+		var signal_connections: int = 0
+		for signal_info in self.get_signal_list():
+			signal_connections += len(self.get_signal_connection_list(signal_info['name']))
+		y_offset += _draw_text_with_box("Signal Connections: {0}".format({0: signal_connections}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 
 	return y_offset

@@ -3,20 +3,27 @@ class_name StateMachine extends StateContainer
 var states: Dictionary[String, State] = {}
 
 var current_state_id: String:
-	get:
-		return self._current_state_id
 	set(value):
 		var current_state = self.get_current_state()
 		if current_state:
 			current_state.reset()
 		current_state_id = value
 
+func connect_deferred_signals() -> void:
+	super()
+	for state in self.states.values():
+		forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+
 func copy(new_id: String = self.id, _new_state = null) -> StateMachine:
 	return super(new_id, StateMachine.new(new_id) if not _new_state else _new_state)
 	
+func get_running_states() -> Array[State]:
+	return [self.get_current_state()]
+
 func add_state(state: State) -> StateMachine:
 	if state.id in self.states:
 		push_error("StateCraft Error: State with ID \"{0}\" already present in State Machine \"{1}\"".format({0: state.id, 1: self.id}))
+	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self.states[state.id] = state
 	if len(self.states) == 1:
 		self.current_state_id = state.id
@@ -69,7 +76,7 @@ func transition_on(from: String, to: String, condition: Variant, additional_call
 				self.transition_to(to)
 				
 	if condition is String:
-		self.on_message(condition, transition_callable)
+		self.on_signal_path(condition, transition_callable)
 	else:
 		self.get_state(from).on(condition, transition_callable)
 	return self

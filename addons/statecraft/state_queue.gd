@@ -8,15 +8,22 @@ var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 
 var _child_states: Array[State] = []
 
+func connect_deferred_signals() -> void:
+	super()
+	for state in self._child_states:
+		forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+
 func add_state(state: State) -> StateContainer:
-	self.listen_for_signals(state)
+	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	return self.add_state_back(state)
 
 func add_state_back(state: State) -> StateContainer:
+	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_back(state)
 	return self
 	
 func add_state_front(state: State, run_immediately: bool = true) -> StateContainer:
+	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_front(state)
 	if not run_immediately:
 		state.status = StateStatus.EXITED

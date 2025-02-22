@@ -329,7 +329,7 @@ class BasicSignalTest extends UnitTestSuite:
 			func(state: State): 
 				state.emit_signal("signal_one")
 		)\
-		.add_state_signal("signal_one")\
+		.add_signal("signal_one")\
 		.on("signal_one", func():
 			self.value_a += 1
 		)
@@ -410,7 +410,7 @@ class BasicStateTestSuite extends BasicStateUnitTestSuite:
 		assert(copied_state.exit_events.size() == state.exit_events.size(), "Exit events should be copied.")
 
 	func test_message_emission(state=self.fixture_empty_state()):
-		state.add_state_signal("test_message")
+		state.add_signal("test_message")
 		state.on("test_message", func(): self.message_calls += 1)
 		state.emit_signal("test_message")
 		assert(self.message_calls == 1, "Message handler should be called when message is emitted.")
@@ -430,12 +430,51 @@ class StateQueueBasicTestSuite extends BasicStateUnitTestSuite:
 		
 	func fixture_signal_state():
 		return State.new("signal_state")\
-		.add_state_signal("signal")\
+		.add_signal("signal")\
 		.add_enter_event(func(state: State): state.emit_signal("signal"))
 	
 	func test_signal_bubble(queue=self.fixture_empty_state_queue(), sig_state=self.fixture_signal_state()):
 		queue.on("signal_state.signal", func(): self.message_calls += 1)
 		queue.add_state(sig_state)
+		queue.run()
+		assert(self.message_calls == 1)
+		
+	func test_signal_bubble_wildcard(queue=self.fixture_empty_state_queue(), sig_state=self.fixture_signal_state()):
+		queue.on("*.signal", func(): self.message_calls += 1)
+		queue.add_state(sig_state)
+		queue.run()
+		assert(self.message_calls == 1)
+		
+	func test_signal_bubble_wrong_state_name(queue=self.fixture_empty_state_queue(), sig_state=self.fixture_signal_state()):
+		queue.on("fake_state.signal", func(): self.message_calls += 1)
+		queue.add_state(sig_state)
+		queue.run()
+		assert(self.message_calls == 0)
+		
+	func test_double_wildcard(queue=self.fixture_empty_state_queue(), sig_state=self.fixture_signal_state()):
+		queue.on("state_queue2.state_queue3.signal_state.signal", func(): self.message_calls += 1)
+		var queue2 = StateQueue.new("state_queue2")
+		var queue3 = StateQueue.new("state_queue3")
+		queue3.add_state(sig_state)
+		
+		queue2.add_state(queue3)
+		
+		queue.add_state(queue2)
+		
+		queue.run()
+		assert(self.message_calls == 1)
+		
+	func test_double_wildcard_out_of_order(queue=self.fixture_empty_state_queue(), sig_state=self.fixture_signal_state()):
+		queue.on("state_queue2.state_queue3.signal_state.signal", func(): self.message_calls += 1)
+		var queue2 = StateQueue.new("state_queue2")
+		var queue3 = StateQueue.new("state_queue3")
+		
+		queue2.add_state(queue3)
+		
+		queue.add_state(queue2)
+		
+		queue3.add_state(sig_state)
+		
 		queue.run()
 		assert(self.message_calls == 1)
 	
