@@ -8,24 +8,31 @@ var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 
 var _child_states: Array[State] = []
 
-func connect_deferred_signals() -> void:
-	super()
-	for state in self._child_states:
-		forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+#func connect_deferred_signals() -> void:
+	#super()
+	#for state in self._child_states:
+		#self.propagate_permanent_messages_to_relay_node(state)
+		##forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 
 func add_state(state: State) -> StateContainer:
-	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	return self.add_state_back(state)
 
 func add_state_back(state: State) -> StateContainer:
-	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	self.propagate_permanent_messages_to_relay_node(state)
+	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_back(state)
 	return self
 	
+# TODO: evaluate the logic of `run_immediately` - are we sure we want this to be the default behaviour?
+#		are there even any cases where you wouldn't want this to happen????
+#		Does the name even make sense?
+
 func add_state_front(state: State, run_immediately: bool = true) -> StateContainer:
-	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	self.propagate_permanent_messages_to_relay_node(state)
+	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_front(state)
-	if not run_immediately:
+	if not run_immediately and self.status != StateStatus.READY:
 		state.status = StateStatus.EXITED
 	return self
 	
@@ -43,6 +50,9 @@ func get_current_state() -> State:
 	return null
 	
 func get_all_states() -> Array[State]:
+	return self._child_states
+	
+func get_children() -> Array:
 	return self._child_states
 	
 func have_all_states_exited() -> bool:

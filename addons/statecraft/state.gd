@@ -1,21 +1,18 @@
-class_name State
-## A state.
-##
-## Long description of what a state is.
+class_name State extends RelayNode
 
-#signal signal_emitted(signal_path: StringName, args: Array)
+signal entered
+signal exited
 
 enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
-
 enum StateStatus {READY, RUNNING, EXITED}
 
-# TODO: CHeck to see if elapsed_runtime is accurate!!!!!
+enum RelayMessageType {CONNECT_EXTERNAL_SIGNAL, CONNECT_INTERNAL_SIGNAL}
 
-var id: String
+# TODO: Check to see if elapsed_runtime is accurate!!!!!
+
 var enter_events: Array[Callable] = []
 var update_events: Array[Callable] = []
 var exit_events: Array[Callable] = []
-var on_exit_transition_method: Callable
 var skippable: bool
 var created_by: String
 var status: StateStatus = StateStatus.READY
@@ -26,18 +23,8 @@ var _exit_after_enter_if_no_update_events: bool = true
 var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
-# TODO: Change this to a Dictionary of [callable, flag]s. with StringName keys.
-#	this way when we need to check if a deferred signal connection has already been added to this list in
-#	`add_deferred_signal_connection`, it'll be way faster, as we wont need to loop through every single
-#	deferred connection, only the callables linked directly to that signal_path.
-var _deferred_signal_connections: Array[Dictionary] = []
-## An array of dicts describing signal connections that should be made, but can't yet
-## because the desired signal does not yet exist.
+var _signal_virtual_connections: Dictionary[StringName, Array] = {}
 
-
-## Copies a state blah blah blah
-##
-## Long description of the copy method...
 func copy(new_id: String = self.id, new_state = null) -> State:
 	new_state = State.new(new_id) if not new_state else new_state
 	new_state.skippable = self.skippable
@@ -49,53 +36,128 @@ func copy(new_id: String = self.id, new_state = null) -> State:
 		new_state.add_exit_event(exit_method)
 	return new_state
 
-func _init(id: String, signal_names: Array = []):
+func _init(id: String):
+	super(id)
 	self.id = id
-	
-	for signal_name in signal_names:
-		self.add_signal(signal_name)
 	
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-func add_user_signal(signal_name: String, arguments: Array = []) -> void:
-	## Creates a signal for this State
-	super(signal_name, arguments)
-	self.connect_deferred_signals()
+func _get_signal_argument_count(signal_: Signal) -> int:
+	for signal_info in signal_.get_object().get_signal_list():
+		if signal_info['name'] == signal_.get_name():
+			return len(signal_info['args'])
+	return -1
 
+func _get_internal_signal_argument_count(signal_name: StringName) -> int:
+	for signal_info in self.get_signal_list():
+		if signal_info['name'] == signal_name:
+			return len(signal_info['args'])
+	return -1
+
+func _base_signal_callback(signal_name: StringName, args: Array):
+	if self.status != StateStatus.RUNNING:
+		return
+	if signal_name in self._signal_virtual_connections.keys():
+		for callable in self._signal_virtual_connections[signal_name]:
+			callable.call(self, args)
+		
+func _signal_callback_zero(signal_name: StringName):
+	return _base_signal_callback(signal_name, [])
+func _signal_callback_one(a: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a])
+func _signal_callback_two(a: Variant, b: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b])
+func _signal_callback_three(a: Variant, b: Variant, c: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c])
+func _signal_callback_four(a: Variant, b: Variant, c: Variant, d: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c, d])
+func _signal_callback_five(a: Variant, b: Variant, c: Variant, d: Variant, e: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c, d, e])
+func _signal_callback_six(a: Variant, b: Variant, c: Variant, d: Variant, e: Variant, f: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c, d, e, f])
+func _signal_callback_seven(a: Variant, b: Variant, c: Variant, d: Variant, e: Variant, f: Variant, g: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c, d, e, f, g])
+func _signal_callback_eight(a: Variant, b: Variant, c: Variant, d: Variant, e: Variant, f: Variant, g: Variant, h: Variant, signal_name: StringName):
+	return _base_signal_callback(signal_name, [a, b, c, d, e, f, g, h])
+	
+func _wrap_signal_callback(callable: Callable, strip_args: bool, signal_argument_count: int) -> Callable:
+	var callable_arg_count: int = callable.get_argument_count()
+	return func(object: Object, args: Array):
+		if strip_args:
+			if callable_arg_count == 0:
+				callable.call()
+			elif callable_arg_count == 1:
+				callable.call(object)
+			else:
+				assert(false, "Callable has too many arguments for a strip-args connection: {0}".format({0: callable_arg_count}))
+		else:
+			if callable_arg_count == signal_argument_count:
+				callable.callv(args)
+			elif callable_arg_count == signal_argument_count + 1:
+				callable.callv(args + [object])
+			else:
+				assert(false, "Callable has too many arguments ({0}) to connect to signal with an argument count of {1}".format({0: callable_arg_count, 1: signal_argument_count}))
+
+func _handle_message(relay_message: RelayMessage) -> bool:
+	if relay_message.message_type == RelayMessageType.CONNECT_EXTERNAL_SIGNAL:
+		var signal_name: StringName = relay_message.args['signal'].get_name()
+		var sig: Signal = relay_message.args['signal']
+		var signal_unique_id: StringName = StringName(signal_name + str(sig.get_object_id()))
+		var signal_argument_count: int = self._get_signal_argument_count(relay_message.args['signal'])
+		
+		var signal_callback_method: Callable
+		if signal_argument_count == 0:
+			signal_callback_method = self._signal_callback_zero
+		elif signal_argument_count == 1:
+			signal_callback_method = self._signal_callback_one
+		elif signal_argument_count == 2:
+			signal_callback_method = self._signal_callback_two
+		elif signal_argument_count == 3:
+			signal_callback_method = self._signal_callback_three
+		elif signal_argument_count == 4:
+			signal_callback_method = self._signal_callback_four
+		elif signal_argument_count == 5:
+			signal_callback_method = self._signal_callback_five
+		elif signal_argument_count == 6:
+			signal_callback_method = self._signal_callback_six
+		elif signal_argument_count == 7:
+			signal_callback_method = self._signal_callback_seven
+		elif signal_argument_count == 8:
+			signal_callback_method = self._signal_callback_eight
+		else:
+			assert(false, "Error: Cannot connect signal \"{0}\", which requires {1} arguments. StateCraft does not support connecting signals with more than 8 arguments. Please harass the Godot maintainers to add VarArg support to gdscript :)".format({0: signal_name, 1: signal_argument_count}))
+		if not sig.is_connected(signal_callback_method):
+			sig.connect(signal_callback_method.bind(signal_unique_id))
+		
+		if signal_unique_id not in self._signal_virtual_connections.keys():
+			self._signal_virtual_connections[signal_unique_id] = []
+			
+		var callable: Callable = relay_message.args['callable']
+		if callable not in self._signal_virtual_connections[signal_unique_id]:
+			self._signal_virtual_connections[signal_unique_id].append(self._wrap_signal_callback(callable, relay_message.args['strip_args'], signal_argument_count))
+		return true
+		
+	elif relay_message.message_type == RelayMessageType.CONNECT_INTERNAL_SIGNAL:
+		var signal_name: StringName = relay_message.args['signal_name']
+		var signal_argument_count: int = self._get_internal_signal_argument_count(signal_name)
+		var callable: Callable = relay_message.args['callable']
+		var callable_argument_count: int = callable.get_argument_count()
+		if callable_argument_count == signal_argument_count:
+			self.connect(signal_name, callable, relay_message.args['flags'])
+		elif callable_argument_count == signal_argument_count + 1:
+			self.connect(signal_name, callable.bind(self), relay_message.args['flags'])
+		return true
+		
+	return false
+	
+func add_user_signal(signal_name: String, arguments: Array = []) -> void:
+	super(signal_name, arguments)
+	self.handle_all_permanent_messages_of_type(RelayMessageType.CONNECT_INTERNAL_SIGNAL)
+	
 func add_signal(signal_name: String, arguments: Array = []) -> State:
 	self.add_user_signal(signal_name, arguments)
 	return self
-
-func connect_deferred_signals() -> void:
-	# Connect any deferred signal connections that match this new signal's name.
-	var connected_deferred_signal_connections: Array = []
-	for deferred_signal_connection in self._deferred_signal_connections:
-		if len(deferred_signal_connection['signal_path']) == 1:
-			if self.has_user_signal(deferred_signal_connection['signal_path'][0]):
-				self.connect(deferred_signal_connection['signal_path'][0], deferred_signal_connection['callable'], deferred_signal_connection['flags'])
-				connected_deferred_signal_connections.append(deferred_signal_connection)
-				
-	for connected_deferred_signal_connection in connected_deferred_signal_connections:
-		self._deferred_signal_connections.erase(connected_deferred_signal_connection)
-
-func add_deferred_signal_connection(signal_path: Array[StringName], callable: Callable, flags: int = 0) -> void:
-	for deferred_signal_connection in self._deferred_signal_connections:
-		if deferred_signal_connection['signal_path'] == signal_path and deferred_signal_connection['callable'] == callable:
-			return
-	self._deferred_signal_connections.append({
-		"signal_path": signal_path,
-		"callable": callable,
-		"flags": flags
-	})
-	self.connect_deferred_signals()
-	
-func connect(signal_path: StringName, callable: Callable, flags: int = 0) -> int:
-	var signal_path_array: PackedStringArray = signal_path.split(".")
-	if len(signal_path_array) == 1:
-		return super(signal_path, callable, flags)
-	self.add_deferred_signal_connection(signal_path_array, callable, flags)
-	return 0
 
 func add_to_runner(state_runner: StateContainer) -> State:
 	state_runner.add_state(self)
@@ -116,29 +178,35 @@ func add_update_event(update_event: Callable) -> State:
 func add_exit_event(exit_event: Callable) -> State:
 	self.exit_events.append(exit_event)
 	return self
-	
-func on_signal(sig: Signal, action: Callable) -> State:
-	sig.connect(func():
-		if self.status == StateStatus.RUNNING: 
-			if action.get_argument_count() > 0:
-				action.call(self)
-			else:
-				action.call())
-	return self
-	
-func discard_args(callable: Callable) -> Callable:
-	return func(a=null, b=null, c=null, d=null, e=null, f=null, g=null, h=null, i=null, j=null, k=null):
-		callable.call()
 
-func on_signal_path(signal_path: String, action: Callable) -> State:
-	# No point wrapping this in a `if self.status == StateStatus.RUNNING
-	# because signal_path can only connect to self or self.child's signals, which
-	# could never possibly emit unless they were running.
-	# And the only way they could be running is if self was running.
-	if action.get_argument_count() == 0:
-		self.connect(signal_path, discard_args(action))
-	elif action.get_argument_count() == 1:
-		self.connect(signal_path, discard_args(action.bind(self)))
+func on_signal(sig: Signal, callable: Callable, strip_args: bool = true) -> State:
+	self.recieve_message(RelayMessage.new(
+		[],
+		RelayMessageType.CONNECT_EXTERNAL_SIGNAL,
+		{
+			"signal": sig,
+			"callable": callable,
+			"flags": 0,
+			"strip_args": strip_args
+		},
+		false
+	))
+	return self
+
+func on_signal_path(signal_path: String, callable: Callable, strip_args: bool = true) -> State:
+	var target_node_path: Array[StringName] = RelayMessage.node_path_string_to_node_path_array(signal_path)
+	var signal_name: StringName = target_node_path[-1]
+	self.recieve_message(RelayMessage.new(
+		target_node_path.slice(0, -1),
+		RelayMessageType.CONNECT_INTERNAL_SIGNAL,
+		{
+			"signal_name": signal_name,
+			"callable": callable,
+			"flags": 0,
+			"strip_args": strip_args
+		},
+		true
+	))
 	return self
 
 func on_callable(callable: Callable, action: Callable) -> State:
@@ -153,7 +221,6 @@ func on(condition: Variant, action: Callable) -> State:
 		
 	elif condition is String:
 		self.on_signal_path(condition, action)
-		#self.on_message(condition, action)
 		
 	elif condition is Callable:
 		self.on_callable(condition, action)
@@ -194,6 +261,7 @@ func enter() -> bool:
 			else:
 				if enter_method.call():
 					custom_enter_method_return_value = true
+	self.entered.emit()
 	return custom_enter_method_return_value
 
 func update(delta: float, speed_scale: float = 1) -> bool:
@@ -223,7 +291,6 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 ##
 ## This method changes the state's status to EXITED if it was previously RUNNING. 
 ## It then calls all the exit methods bound to this state. 
-## If an `on_exit_transition_method` is defined, it will be called as well.
 ## 
 ## Returns: `true` if the exit routine was executed, `false` if the state was already exited.
 func exit() -> bool:
@@ -236,17 +303,8 @@ func exit() -> bool:
 				else:
 					exit_method.call()
 		
-		# TODO: I hate this. Is there some way we can get rid of this on_exit_transition_method?
-		#	perhaps we can just emit a signal after the exit() method finishes running its callbacks,
-		# 	and anything can connect to that callback? That seems way more flexible and we dont need this special-case
-		#	logic.
-		if self.on_exit_transition_method:
-			if self.on_exit_transition_method.get_argument_count() == 1:
-				self.on_exit_transition_method.call(self)
-			else:
-				self.on_exit_transition_method.call()
-		else:
-			return true
+		self.exited.emit()
+		return true
 	return false
 	
 	

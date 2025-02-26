@@ -30,65 +30,10 @@ func get_running_states() -> Array[State]:
 	assert(false, "Cannot call `get_running_states()` on abstract class StateContainer")
 	return []
 	
-#func get_current_state() -> State:
-	#assert(false, "Cannot call `get_current_state()` on abstract StateContainer.")
-	#return null
-	
 func get_all_states() -> Array[State]:
 	assert(false, "Cannot call `get_all_states()` on abstract StateContainer.")
 	return []
-	
-func forward_deferred_signal_connections_to_child(child_state: State, deferred_signal_connections: Array[Dictionary]) -> void:
-	for deferred_signal_connection in deferred_signal_connections:
-		var signal_path: Array[StringName] = deferred_signal_connection["signal_path"].duplicate()
-		if len(signal_path) > 1:
-			if signal_path[0] == child_state.id or signal_path[0] == StringName('*') or signal_path[0] == StringName('**'):
-				child_state.add_deferred_signal_connection(signal_path.slice(1), deferred_signal_connection['callable'], deferred_signal_connection['flags'])
-			if signal_path[0] == StringName('**'):
-				child_state.add_deferred_signal_connection(signal_path, deferred_signal_connection['callable'], deferred_signal_connection['flags'])
 
-
-#func connect_child_state(state: State):
-	#state.on_message(
-		#StringName("message_emitted"), 
-		#func(message_name: StringName, emitter_name: StringName):
-			#self.emit(StringName("{}.{}".format({0: self.id, 1: message_name})))
-		#)
-	
-#func on_message(message_path: String, action: Callable):
-	### Given a message, identified via a path (eg. gun_machine.firing.bullet_created),
-	### this method attaches the action callback to the `bullet_created` message of the `firing` state.
-	#var path_components: Array = Array(message_path.split("."))
-	#var message_id: String = path_components.pop_back()
-	#
-	#if action.get_argument_count() > 0 and action.get_bound_arguments_count() == 0:
-		#action = action.bind(self)
-		#
-	#if len(path_components) > 0:
-		#var current_state = path_components.pop_front()
-		#for state in self.get_states(current_state):
-			#return state.on_message(".".join(path_components + [message_id]), action)
-	#return super(message_path, action)
-	
-	
-#func connect_signal(signal_path: String, callable: Callable) -> State:
-	#self.signal_connections[signal_path] = callable
-	#return self
-
-#func listen_for_signals(state: State):
-	## Propagates signals from another state into this one.
-	#state.connect("signal_emitted", func(signal_path: StringName, args: Array = []):
-		#self.emit_signal(StringName("signal_emitted"), StringName("{0}.{1}".format({0: state.id, 1: signal_path})), args)
-		#)
-
-#func get_state_from_message_path(message_path: String) -> State:
-	#var path_components: Array = Array(message_path.split("."))
-	#var message_id: String = path_components.pop_back()
-	#var current_state = self
-	#for path_component in path_components:
-		#current_state = current_state.get_state(path_component)
-	#return current_state
-	
 func get_states(state_id: String) -> Array[State]:
 	var matches: Array[State] = []
 	for state in self._child_states:

@@ -1,6 +1,5 @@
 extends Node2D
 
-
 class BasicStateUnitTestSuite extends UnitTestSuite:
 	var enter_calls: int = 0
 	var update_calls: int = 0
@@ -13,26 +12,26 @@ class BasicStateUnitTestSuite extends UnitTestSuite:
 		self.exit_calls = 0
 		self.message_calls = 0
 		
-	func fixture_empty_state():
-		return State.new("emtpy_state")
+	func fixture_empty_state(state_name: String = "empty_state"):
+		return State.new(state_name)
 		
-	func fixture_enter_event_state():
-		var state: State = State.new("test_state")
+	func fixture_enter_event_state(state_name: String = "enter_event_state"):
+		var state: State = State.new(state_name)
 		state.add_enter_event(func(): self.enter_calls += 1)
 		return state
 		
-	func fixture_update_event_state():
-		var state: State = State.new("test_state")
+	func fixture_update_event_state(state_name: String = "update_event_state"):
+		var state: State = State.new(state_name)
 		state.add_update_event(func(): self.update_calls += 1)
 		return state
 	
-	func fixture_exit_event_state():
-		var state: State = State.new("test_state")
+	func fixture_exit_event_state(state_name: String = "exit_event_state"):
+		var state: State = State.new(state_name)
 		state.add_exit_event(func(): self.exit_calls += 1)
 		return state
 		
-	func fixture_full_state():
-		var state: State = State.new("full_state")
+	func fixture_full_state(state_name: String = "full_state"):
+		var state: State = State.new(state_name)
 		state.add_enter_event(func(): self.enter_calls += 1)
 		state.add_update_event(func(): 
 			self.update_calls += 1
@@ -223,17 +222,17 @@ class BasicPropTestSuite extends UnitTestSuite:
 	func fixture_basic_state() -> State:
 		var state: State = State.new("state")
 		state.add_enter_event(
-			func(state: State):
-				state.props["value"] = 0
+			func(state_: State):
+				state_.props["value"] = 0
 		)
 		state.add_update_event(
-			func(delta: float, state: State):
-				state.props["value"] += 1
+			func(_delta: float, state_: State):
+				state_.props["value"] += 1
 				return true
 		)
 		state.add_exit_event(
-			func(state: State):
-				self.value_a += state.props["value"]
+			func(state_: State):
+				self.value_a += state_.props["value"]
 		)
 		return state
 	
@@ -318,10 +317,13 @@ class EnterAndUpdateAndExitEventStatusTest extends AbstractStatusTest:
 		)
 		
 class BasicSignalTest extends UnitTestSuite:
-	var value_a: int = 0
+	signal test_signal
+	signal test_signal_with_args(x: int, y: String)
+	
+	var value_a: String = ""
 	
 	func preflight():
-		self.value_a = 0
+		self.value_a = ""
 	
 	func fixture_simple_signal_state() -> State:
 		return State.new("state")\
@@ -331,44 +333,139 @@ class BasicSignalTest extends UnitTestSuite:
 		)\
 		.add_signal("signal_one")\
 		.on("signal_one", func():
-			self.value_a += 1
+			self.value_a += "default"
 		)
 	
 	func test_simple_signal_call(state=self.fixture_simple_signal_state()):
 		state.run()
-		assert(self.value_a == 1)
+		assert(self.value_a == "default")
 	
 	func test_simple_signal_call_ten_times(state=self.fixture_simple_signal_state()):
 		for i in range(10):
 			state.reset()
 			state.run()
-		assert(self.value_a == 10)
+		assert(self.value_a == "default".repeat(10))
 		
 	func test_multiple_signal_handlers(state=self.fixture_simple_signal_state()):
 		state.on("signal_one", 
 			func():
-				self.value_a += 1
+				self.value_a += "apple"
 		)
 		state.run()
-		assert(self.value_a == 2)
+		assert(self.value_a == "defaultapple")
 		
 	func test_running_all_signal_handlers_before_exiting(state=self.fixture_simple_signal_state()):
 		state.on("signal_one", func():
+			self.value_a += "banana"
+		)		
+		state.on("signal_one", func():
 			state.exit()
 		)
-		state.on("signal_one", func():
-			self.value_a += 1
-		)
+		
+		state.on('signal_one', func():
+			self.value_a += "lime")
 		
 		state.run()
-		assert(self.value_a == 2)
+		assert(self.value_a == "defaultbananalime")
 		assert(state.status == State.StateStatus.EXITED)
-
+		
+	func test_signals_only_work_on_running_states():
+		var state: State = State.new("state")
+		state.keep_alive()
+		state.on_signal(self.test_signal, func():
+			self.value_a += "strawberry")
+						
+		self.test_signal.emit()
+		assert(self.value_a == "")
+		
+		state.run()
+		self.test_signal.emit()
+		assert(self.value_a == "strawberry")
+	
+	func test_signal_work_on_entered_states():
+		var state: State = State.new("state")
+		
+		state.add_enter_event(func():
+			self.test_signal.emit())
+			
+		state.on_signal(self.test_signal, func():
+			self.value_a += "lemon")
+		
+		state.run()
+		assert(self.value_a == "lemon")
+		
+		
+	func test_multiple_signal_connections():
+		var state_a: State = State.new("state_a")
+		state_a.keep_alive()
+		state_a.on_signal(self.test_signal, func():
+			self.value_a += "blackberry")
+			
+		state_a.on_signal(self.test_signal, func():
+			self.value_a += "kiwi")
+		state_a.run()
+		self.test_signal.emit()
+		assert(self.value_a == "blackberrykiwi")
+		
+	# Test that ensures connections to states made with `State.on_signal` are
+	# disconnected correctly after the State is freed.
+	func test_signal_connection_to_deleted_state():
+		var state_a: State = State.new("state_a")
+		state_a.keep_alive()
+		
+		state_a.run()
+		assert(state_a.status == State.StateStatus.RUNNING)
+		
+		state_a.on_signal(self.test_signal, func():
+			self.value_a += "durian")
+		
+		# Check to make sure the signal connection is working
+		self.test_signal.emit()
+		assert(self.value_a == "durian")
+		
+		# will be called after `state_a` is freed
+		call_deferred("_after_state_freed_a")
+		
+	func _after_state_freed_a():
+		# `state` is freed a thtis point, so the signal should not be connected
+		#	to anything any more.
+		self.preflight()
+		self.test_signal.emit()
+		assert(self.value_a == "")
+		
+	func test_signal_with_arguments():
+		var state: State = State.new("state")
+		state.keep_alive()
+		state.on_signal(
+			self.test_signal_with_args, 
+			func(number: int, name: String):
+				self.value_a += str(number)
+				self.value_a += name,
+			false)
+		state.run()
+		self.test_signal_with_args.emit(1337, "hello")
+		assert(self.value_a == "1337hello")
+		
+	func test_signal_with_argument_and_state():
+		var state: State = State.new("state")
+		state.keep_alive()
+		state.on_signal(
+			self.test_signal_with_args, 
+			func(number: int, name: String, state_: State):
+				state_.exit()
+				self.value_a += str(number)
+				self.value_a += name,
+			false)
+		state.run()
+		assert(state.status == State.StateStatus.RUNNING)
+		self.test_signal_with_args.emit(1337, "hello")
+		assert(self.value_a == "1337hello")
+		assert(state.status == State.StateStatus.EXITED)
+		
 
 class BasicStateTestSuite extends BasicStateUnitTestSuite:
-
 	func test_state_initialization(state=self.fixture_empty_state()):
-		assert(state.id == "emtpy_state", "State ID should be correctly assigned.")
+		assert(state.id == "empty_state", "State ID should be correctly assigned.")
 		assert(state.status == State.StateStatus.READY, "State should initialize with READY status.")
 		assert(state.enter_events.is_empty(), "Enter events should be empty on initialization.")
 		assert(state.update_events.is_empty(), "Update events should be empty on initialization.")
@@ -587,9 +684,106 @@ class StateQueueBasicTestSuite extends BasicStateUnitTestSuite:
 		state2.exit()
 		queue.update(0.1)
 		return self.exit_calls == 1
+		
+	func test_internal_signal_basic():
+		var queue: StateQueue = StateQueue.new("queue")
+		var state: State = State.new("signal_state")\
+		.add_signal("my_signal")\
+		.add_enter_event(func(state_: State): state_.emit_signal("my_signal"))
+		queue.on("signal_state.my_signal", func():
+			self.message_calls += 1)
+		queue.add_state(state)
+		queue.run()
+		assert(self.message_calls == 1)
+		
+	func test_internal_state_with_args():
+		var queue: StateQueue = StateQueue.new("queue")\
+		.set_exit_policy(StateQueue.ExitPolicy.REMOVE)
+		var state: State = State.new("signal_state")\
+		.keep_alive()\
+		.add_signal("arg_signal", [{"name": "x", "type": TYPE_INT}])\
+		.add_enter_event(func(state_: State): state_.emit_signal("arg_signal", 32))
+		queue.on("signal_state.arg_signal", func(val: int, state_: State):
+			state_.exit()
+			self.message_calls += val)
+		queue.add_state(state)
+		queue.run()
+		assert(self.message_calls == 32)
+		assert(len(queue.get_all_states()) == 0)
 
-
+class BasicStateMachineTest extends BasicStateUnitTestSuite:
+	var value_a: int = 0
+	func preflight():
+		super()
+		self.value_a = 0
+		
+	func test_empty_state_machine():
+		var state_machine: StateMachine = StateMachine.new("state_machine")
+		state_machine.run()
+		assert(state_machine.status == State.StateStatus.RUNNING)
+		
+	func test_one_state_state_machine(state=self.fixture_full_state()):
+		var state_machine: StateMachine = StateMachine.new("state_machine")
+		state_machine.run()
+		assert(state_machine.status == State.StateStatus.RUNNING)
+		state_machine.add_state(state)
+		state_machine.run()
+		assert(state.status == State.StateStatus.EXITED)
+		assert(self.enter_calls == 1)
+		assert(self.update_calls == 1)
+		assert(self.exit_calls == 1)
 	
+	func test_on_exit_transition(full_state=self.fixture_full_state("full_state"), empty_state=self.fixture_empty_state("empty_state")):
+		var state_machine: StateMachine = StateMachine.new("state_machine")
+		state_machine.add_state(full_state)
+		state_machine.add_state(empty_state)
+		state_machine.transition_on_exit("full_state", "empty_state")
+		assert(state_machine.get_current_state().id == "full_state")
+		state_machine.run()
+		assert(state_machine.get_current_state().id == "empty_state")
+		assert(empty_state.status == State.StateStatus.READY)
+		assert(self.enter_calls == 1)
+		assert(self.update_calls == 1)
+		assert(self.exit_calls == 1)
+	
+	func test_manual_transition(state_one=self.fixture_full_state("state_one"), state_two=self.fixture_empty_state("state_two")):
+		var state_machine = StateMachine.new("state_machine")
+		
+		state_one.add_update_event(func():
+			state_machine.transition_to("state_two")
+			return true)
+		
+		state_machine.add_state(state_one)
+		state_machine.add_state(state_two)
+		state_machine.run()
+		
+		assert(self.enter_calls == 1)
+		assert(self.update_calls == 1)
+		assert(self.exit_calls == 1)
+		assert(state_one.status == State.StateStatus.READY)
+		assert(state_machine.get_current_state().id == "state_two")
+		assert(state_two.status == State.StateStatus.READY)
+		
+		state_machine.run()
+		assert(state_machine.get_current_state().id == "state_two")
+		assert(state_two.status == State.StateStatus.EXITED)
+		
+	func test_state_machine_signals():
+		var state_machine: StateMachine = StateMachine.new("state_machine")
+		state_machine.on_signal_path("state_a.my_signal", func():
+			self.value_a += 1)
+			
+		state_machine.add_state(
+			State.new("state_a")
+			.add_signal("my_signal")
+			.add_enter_event(func(state_: State):
+				state_.emit_signal("my_signal")))
+
+		state_machine.run()
+		assert(self.value_a == 1)
+				
+		
+# TODO: rename these test classes - they're a mess.
 func _ready() -> void:
 	BasicSuite.new("BasicSuite")
 	BasicEnterAndUpdateSuite.new("BasicEnterAndUpdateSuite")
@@ -603,3 +797,4 @@ func _ready() -> void:
 	BasicSignalTest.new("BasicSignalTest")
 	BasicStateTestSuite.new("BasicStateTestSuite")
 	StateQueueBasicTestSuite.new("StateQueueBasicTestSuite")
+	BasicStateMachineTest.new("BasicStateMachineTest")

@@ -5,15 +5,15 @@ class TestReport:
 	var status: Status
 	var test_name: String
 	
-	func _init(test_name: String, status: Status) -> void:
-		self.test_name = test_name
-		self.status = status
+	func _init(test_name_: String, status_: Status) -> void:
+		self.test_name_ = test_name
+		self.status_ = status
 
 var suite_name: String = ""
 var test_reports: Array[TestReport] = []
 
-func _init(suite_name: String) -> void:
-	self.suite_name = suite_name
+func _init(suite_name_: String) -> void:
+	self.suite_name = suite_name_
 	for method in self.get_method_list():
 		if method['name'].begins_with("test_"):
 			self.preflight()

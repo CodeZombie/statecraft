@@ -12,8 +12,6 @@ var run_state_queue: bool = true
 func move_to_origin():
 	self.position = Vector2(0, 0)
 	
-#TODO: transition_to and on_message should be able to handle multiple messages:
-
 func _ready() -> void:
 	state_queue = StateQueue.new("movement_state_queue").set_exit_policy(StateQueue.ExitPolicy.KEEP)
 	state_queue.loop = true
@@ -26,12 +24,12 @@ func _ready() -> void:
 			self.scale = Vector2(1,1)
 			self.position.x = 300
 			)
-		.add_update_event(func(delta: float, state: State, ):
+		.add_update_event(func(delta: float, state: State):
 			self.position = lerp(self.position, pos_a.position, speed * delta)
 			if self.position.distance_to(pos_a.position) < 10:
 				state.emit_signal("finished_moving", 32)
 			)
-		.on("finished_moving", func(state: State): state.exit())
+		.on("finished_moving", func(val: int, state: State): state.exit())
 		)\
 	#.advance_on("move_to_pos_a", "move_to_pos_a.finished_moving")\
 	#state_queue = StateQueue.new("movement_state_queue")\

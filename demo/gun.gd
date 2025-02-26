@@ -41,7 +41,9 @@ func _ready() -> void:
 	.add_state(
 		StateMachine.new("jammed")
 		.add_state(
-			State.new("idle", ["clearing_jam"]).keep_alive()
+			State.new("idle")
+			.keep_alive()
+			.add_signal("clearing_jam")
 			.emit_signal_on("clearing_jam", self.magazine_pressed))\
 		.add_state(
 			TimerState.new("click", firing_interval)

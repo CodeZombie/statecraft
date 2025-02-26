@@ -9,10 +9,11 @@ var current_state_id: String:
 			current_state.reset()
 		current_state_id = value
 
-func connect_deferred_signals() -> void:
-	super()
-	for state in self.states.values():
-		forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+#func connect_deferred_signals() -> void:
+	#super()
+	#for state in self.states.values():
+		#self.propagate_permanent_messages_to_relay_node(state)
+		##forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 
 func copy(new_id: String = self.id, _new_state = null) -> StateMachine:
 	return super(new_id, StateMachine.new(new_id) if not _new_state else _new_state)
@@ -23,7 +24,8 @@ func get_running_states() -> Array[State]:
 func add_state(state: State) -> StateMachine:
 	if state.id in self.states:
 		push_error("StateCraft Error: State with ID \"{0}\" already present in State Machine \"{1}\"".format({0: state.id, 1: self.id}))
-	self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	self.propagate_permanent_messages_to_relay_node(state)
+	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self.states[state.id] = state
 	if len(self.states) == 1:
 		self.current_state_id = state.id
@@ -34,6 +36,9 @@ func get_state(id: String) -> State:
 	
 func get_states(state_id: String) -> Array[State]:
 	return [self.get_state(state_id)]
+	
+func get_children() -> Array:
+	return self.states.values()
 	
 func get_current_state() -> State:
 	if self.current_state_id in self.states.keys():
@@ -53,7 +58,7 @@ func update(delta: float, speed_scale: float = 1.0) -> bool:
 	return false
 
 func transition_on_exit(from: String, to: String) -> StateContainer:
-	self.get_state(from).on_exit_transition_method = self.transition_to.bind(to)
+	self.get_state(from).exited.connect(self.transition_to.bind(to))
 	return self
 	
 func from(state_id: String) -> TransitionChainFrom:
