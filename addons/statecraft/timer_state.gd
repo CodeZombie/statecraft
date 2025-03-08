@@ -18,7 +18,7 @@ func update(delta: float, speed_scale: float = 1):
 	self._elapsed += delta * speed_scale
 	return self._elapsed >= self.duration 
 		
-func copy(new_id: String = self.id, _new_state = null) -> TimerState:
+func copy(new_id: StringName = self.id, _new_state = null) -> TimerState:
 	return super(new_id, TimerState.new(new_id, self.duration) if not _new_state else _new_state)
 	
 func as_string(indent: int = 0) -> String:

@@ -56,7 +56,7 @@ func exit() -> bool:
 		return true
 	return false
 	
-func copy(new_id: String = self.id, _new_state = null):
+func copy(new_id: StringName = self.id, _new_state = null):
 	return super(new_id, TweenState.new(new_id, self.scene_node, self.tween_definition_method) if not _new_state else _new_state)
 
 func as_string(indent: int = 0) -> String:

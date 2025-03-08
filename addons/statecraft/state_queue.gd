@@ -99,5 +99,5 @@ func clear():
 		state.exit()
 	self._child_states.clear()
 
-func copy(new_id: String = self.id, _new_state = null) -> StateQueue:
+func copy(new_id: StringName = self.id, _new_state = null) -> StateQueue:
 	return super(new_id, StateQueue.new(new_id) if not _new_state else _new_state)

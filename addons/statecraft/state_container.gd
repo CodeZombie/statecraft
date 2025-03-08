@@ -12,13 +12,15 @@ func _init(id: String):
 	self.keep_alive()
 	
 func enter() -> bool:
+	if self._debug: print(self.id, " ENTER (StateContainer)")
 	for state in self.get_all_states():
 		state.reset()
 	return super()
 	
 func exit() -> bool:
+	if self._debug: print(self.id, " EXIT (StateContainer)")
 	if super():
-		for state in self.get_running_states():
+		for state in self.get_all_states():
 			state.exit()
 		#var current_state = self.get_current_state()
 		#if current_state:
@@ -34,25 +36,70 @@ func get_all_states() -> Array[State]:
 	assert(false, "Cannot call `get_all_states()` on abstract StateContainer.")
 	return []
 
-func get_states(state_id: String) -> Array[State]:
+func get_states(state_id: StringName) -> Array[State]:
 	var matches: Array[State] = []
 	for state in self._child_states:
 		if state.id == state_id:
 			matches.append(state)
 	return matches
 	
+	
+func transition_to(state_id: StringName) -> StateContainer:
+	if self._debug: print("{0} is passing a transition event: {to}".format({0: self.id, 'to': state_id}))
+	var state_path: Array
+	if state_id.contains('.'):
+		state_path = Array(state_id.split('.'))
+		state_id = state_path.pop_front()
+	
+	var target_states: Array[State] = self.get_states(state_id)
+	
+	if len(target_states) == 0:
+		assert(false, "StateContainer {0} tried to pass a transition event to an unknown state \"{1}\"".format({0: self.id, 1: state_id}))
+	
+	if state_path:
+		for target_state in target_states:
+			target_state.transition_to('.'.join(state_path))
+	
+	return self
+	
+
+
+func is_running(state_to_path: StringName = &"") -> bool:
+	var children: Array = [self]
+	if state_to_path != &"":
+		children = self.get_children_via_path(state_to_path)
+	for child in children:
+		if child.status == StateStatus.RUNNING:
+			return true
+	return false
+
+# Recursive tree-search is probably a red flag in a high-performance library like this, 
+# but what can ya do :^)
+#func is_running(state_id: StringName) -> bool:
+	#var target_state_path: Array = state_id.split('.')
+	#if len(target_state_path) > 1:
+		#var next_node = target_state_path.pop_front()
+		#for child in self.get_states(next_node):
+			#if child.is_running(".".join(target_state_path)):
+				#return true
+	#else:
+		#for child in self.get_states(state_id):
+			#if child.status == StateStatus.RUNNING:
+				#return true
+	#return false
+	
 func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):
 		indent_string += " "
-	var s: String = indent_string + self.id + ": " + self.get_status_string() + " : " + str(len(self.actions))
-	for child_state in self._child_states:
+	var s: String = indent_string + self.id + ": " + self.get_status_string()
+	for child_state in self.get_children():
 		s += "\n" + child_state.as_string(indent + 4)
 	return s
 	
-func copy(new_id: String = self.id, _new_state = null) -> StateContainer:
+func copy(new_id: StringName = self.id, _new_state = null) -> StateContainer:
 	_new_state = super(new_id, StateContainer.new(new_id) if not _new_state else _new_state)
-	for child_state in self._child_states:
+	for child_state in self.get_children():
 		#TODO: _new_state does not necessarily have an `add_state` method. Plsfix
 		_new_state.add_state(child_state.copy(child_state.id))
 	return _new_state
