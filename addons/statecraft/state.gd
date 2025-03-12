@@ -1,18 +1,20 @@
 class_name State extends SignalRelayNode
 
 signal entered
-signal updated(float)
+signal processed(float)
 signal exited
 signal broadcast_(StringName)
 
-enum ExecutionPosition {PRE_UPDATE, POST_UPDATE}
-enum StateStatus {READY, RUNNING, EXITED}
+enum ExecutionPosition {PRE_PROCESS, POST_PROCESS}
+enum StateStatus {READY, RUNNING, EXITING, EXITED}
 
 # TODO: Check to see if elapsed_runtime is accurate!!!!!
 
 var enter_events: Array[Callable] = []
-var update_events: Array[Callable] = []
+var process_events: Array[Callable] = []
 var exit_events: Array[Callable] = []
+
+var condition_events: Dictionary[Callable, Array] = {}
 
 var skippable: bool
 var created_by: String
@@ -20,12 +22,13 @@ var status: StateStatus = StateStatus.READY
 var props: Dictionary = {}
 #var actions: Array[Callable] = []
 #var message_handlers: Dictionary[String, Array] = {}
-var _exit_after_enter_if_no_update_events: bool = true
+var _exit_after_enter_if_no_process_events: bool = true
 var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
 #var _signal_virtual_connections: Dictionary[StringName, Array] = {}
 
+var _timers: Dictionary[float, SCUtils.CallbackTimer] = {}
 
 var _unique_id_counter: int = 0
 
@@ -48,29 +51,7 @@ var _unique_id_counter: int = 0
 ### STATIC METHODS
 ###
 
-static func _call_with_optional_state(state: State, callable: Callable) -> Variant:
-	if callable.get_argument_count() == 1:
-		return callable.call(state)
-	else:
-		return callable.call()
 
-static func _bind_with_optional_state(state: State, callable: Callable) -> Callable:
-	if callable.get_bound_arguments_count() == 1:
-		return callable.bind(state)
-	return callable
-
-static func _invert_callable(callable: Callable) -> Callable:
-	var arg_count: int = callable.get_argument_count()
-	if arg_count == 0:
-		return func(): return not callable.call()
-	elif arg_count == 1:
-		return func(arg_a: Variant): return not callable.call(arg_a) 
-	elif arg_count == 2:
-		return func(arg_a: Variant, arg_b: Variant): return not callable.call(arg_a, arg_b)
-	elif arg_count == 3:
-		return func(arg_a: Variant, arg_b: Variant, arg_c: Variant): return not callable.call(arg_a, arg_b, arg_c)
-	assert(false, "Cannot invert callable with more than 3 arguments.")
-	return Callable()
 ###
 ### PRIVATE METHODS
 ###
@@ -81,7 +62,7 @@ func _get_unique_id() -> int:
 	return unique_id
 	
 func _base_signal_callback(signal_name: StringName, args: Array):
-	if self.status != StateStatus.RUNNING:
+	if self.status == StateStatus.READY or self.status == StateStatus.EXITED:
 		return
 	super(signal_name, args)
 
@@ -90,14 +71,14 @@ func _base_signal_callback(signal_name: StringName, args: Array):
 ### BASIC METHODS
 ###
 
-func copy(new_id: StringName = self.id, new_state = null) -> State:
+func copy(new_id: NodePath = self.id, new_state = null) -> State:
 	new_state = State.new(new_id) if not new_state else new_state
 	new_state.skippable = self.skippable
-	new_state._exit_after_enter_if_no_update_events = self._exit_after_enter_if_no_update_events
+	new_state._exit_after_enter_if_no_process_events = self._exit_after_enter_if_no_process_events
 	for enter_method in self.enter_events:
 		new_state.add_enter_event(enter_method)
-	for update_method in self.update_events:
-		new_state.add_update_event(update_method)
+	for process_method in self.process_events:
+		new_state.add_process_event(process_method)
 	for exit_method in self.exit_events:
 		new_state.add_exit_event(exit_method)
 	return new_state
@@ -109,23 +90,23 @@ func _init(id: String):
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-func is_running(state_to_path: StringName = &"") -> bool:
-	return self.status == StateStatus.RUNNING
+#func is_running(state_to_path: StringName = &"") -> bool:
+	#return self.status == StateStatus.RUNNING
 
 ###
 ### EVENT HANDLER FACTORY CREATORS
 ###
 
 func on_enter() -> EventHandlerFactory:
-	return self.on_signal_path("entered")
+	return self.on_signal_path(^":entered")
 	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.ENTERED))
 
-func on_update() -> EventHandlerFactory:
-	return self.on_signal_path("updated")
-	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.UPDATED))
+# func on_update() -> EventHandlerFactory:
+# 	return self.on_signal_path("updated")
+# 	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.UPDATED))
 
 func on_exit() -> EventHandlerFactory:
-	return self.on_signal_path("exited")
+	return self.on_signal_path(^":exited")
 	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.EXITED))
 
 func on_broadcast(broadcast_name: StringName) -> EventHandlerFactory:
@@ -151,24 +132,105 @@ func on_inv(condition: Callable) -> EventHandlerFactory:
 ### EVENT HANDLERS
 ###
 
-func add_on_broadcast_callback(broadcast_name: StringName, callable: Callable) -> State:
+func add_enter_event(callables: Variant) -> State:
+	if callables is Callable:
+		callables = [callables]
+		
+	for callable in callables:
+		self.enter_events.append(callable)
+	return self
+	
+func add_process_event(callables: Variant) -> State:
+	if callables is Callable:
+		callables = [callables]
+		
+	for callable in callables:
+		self.process_events.append(callable)
+	return self
+
+func add_exit_event(callables: Variant) -> State:
+	if callables is Callable:
+		callables = [callables]
+		
+	for callable in callables:
+		self.exit_events.append(callable)
+	return self
+
+func add_on_condition_event(condition: Callable, callback: Callable, invert: bool = false) -> State:
+	if condition not in self.condition_events.keys():
+		self.condition_events[condition] = []
+	self.condition_events[condition].append(callback)
+	return self
+	
+func add_on_timer_event(timer_duration: float, callback: Callable) -> State:
+	if timer_duration not in self._timers.keys():
+		self._timers[timer_duration] = SCUtils.CallbackTimer.new()
+	self._timers[timer_duration].add_callback(callback)
+	return self
+
+func add_on_broadcast_event(broadcast_name: StringName, callable: Callable) -> State:
 	self.broadcast_.connect(func(broadcast_name_: StringName):
 		if self.status == StateStatus.RUNNING and broadcast_name == broadcast_name_:
 			callable.call())
 	return self
 
-func add_entered_callback(enter_method: Callable) -> State:
-	self.enter_events.append(enter_method)
-	return self
-	
-func add_updated_callback(update_event: Callable) -> State:
-	self.update_events.append(update_event)
-	return self
+###
+### Relay Message Creators
+###
 
-func add_exited_callback(exit_event: Callable) -> State:
-	self.exit_events.append(exit_event)
-	return self
+# func create_add_entered_callback_message(target_path: NodePath, callable: Callable) -> RelayMessage:
+# 	return RelayMessage.new(
+# 		target_path,
+# 		RelayMessage.Type.ADD_ENTERED_CALLBACK,
+# 		{
+# 			'callable': callable
+# 		},
+# 		true
+# 	)
 
+# func create_add_exited_callback_message(target_path: NodePath, callable: Callable) -> RelayMessage:
+# 	return RelayMessage.new(
+# 		target_path,
+# 		RelayMessage.Type.ADD_EXITED_CALLBACK,
+# 		{
+# 			'callable': callable
+# 		},
+# 		true
+# 	)
+
+# func create_add_condition_callback_message(target_path: NodePath, condition: Callable, callback: Callable) -> RelayMessage:
+# 	return RelayMessage.new(
+# 		target_path,
+# 		RelayMessage.Type.ADD_CONDITION_CALLBACK,
+# 		{
+# 			'condition': condition,
+# 			'callback': callback
+# 		},
+# 		true
+# 	)
+
+# func create_add_on_broadcast_callback_message(target_path: NodePath, broadcast_name: StringName, callable: Callable) -> RelayMessage:
+# 	return RelayMessage.new(
+# 		target_path,
+# 		RelayMessage.Type.ADD_ON_BROADCAST_CALLBACK,
+# 		{
+# 			'broadcast_name': broadcast_name,
+# 			'callback': callable
+# 		},
+# 		true
+# 	)
+
+# func create_on_timer_callback_message(target_path: NodePath, duration: float, position: ExecutionPosition, callable: Callable) -> RelayMessage:
+# 	RelayMessage.new(
+# 		target_path,
+# 		RelayMessage.Type.ADD_TIMER_CALLBACK,
+# 		{
+# 			'duration': duration,
+# 			'position': position,
+# 			'callable': callable
+# 		},
+# 		true
+# 	)
 
 
 ###
@@ -176,15 +238,7 @@ func add_exited_callback(exit_event: Callable) -> State:
 ###
 
 func broadcast(broadcast_name: StringName) -> void:
-	self.recieve_message(RelayMessage.new(
-		"**",
-		RelayMessage.Type.EMIT_SIGNAL,
-		{
-			'signal_name': "broadcast_",
-			'args': [broadcast_name]
-		},
-		false
-	))
+	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [broadcast_name], false))
 
 func set_prop(key: String, value: Variant) -> State:
 	self.props[key] = value
@@ -192,32 +246,40 @@ func set_prop(key: String, value: Variant) -> State:
 
 
 
-func _handle_message(relay_message: RelayMessage) -> bool:
-	if super(relay_message):
-		return true
-	if relay_message.message_type == RelayMessage.Type.ADD_ENTERED_CALLBACK:
-		self.add_updated_callback(relay_message.args['callable'])
-		return true
-	if relay_message.message_type == RelayMessage.Type.ADD_UPDATED_CALLBACK:
-		self.add_updated_callback(relay_message.args['callable'])
-		return true
-	if relay_message.message_type == RelayMessage.Type.ADD_EXITED_CALLBACK:
-		self.add_updated_callback(relay_message.args['callable'])
-		return true
-	if relay_message.message_type == RelayMessage.Type.CALL_METHOD:
-		if self._debug: print("{0}.handle_message[{1}]({2}({3}))".format({0:self.id, 1: relay_message.message_type, 2: relay_message.args['method_name'], 3: relay_message.args['args']}))
-		self.callv(relay_message.args['method_name'], relay_message.args['args'])
-		return true
+# func _handle_message(relay_message: RelayMessage) -> bool:
+# 	if super(relay_message):
+# 		return true
+# 	# if relay_message.message_type == RelayMessage.Type.ADD_ENTERED_CALLBACK:
+# 	# 	self.add_updated_callback(relay_message.args['callable'])
+# 	# 	return true
+# 	# if relay_message.message_type == RelayMessage.Type.ADD_UPDATED_CALLBACK:
+# 	# 	self.add_updated_callback(relay_message.args['callable'])
+# 	# 	return true
+# 	# if relay_message.message_type == RelayMessage.Type.ADD_EXITED_CALLBACK:
+# 	# 	self.add_updated_callback(relay_message.args['callable'])
+# 	# 	return true
+# 	if relay_message.message_type == RelayMessage.Type.CALL_METHOD:
+# 		if self._debug: print("{0}.handle_message[{1}]({2}({3}))".format({0:self.id, 1: relay_message.message_type, 2: relay_message.args['method_name'], 3: relay_message.args['args']}))
+# 		self.callv(relay_message.args['method_name'], relay_message.args['args'])
+# 		return true
 		
-	elif relay_message.message_type == RelayMessage.Type.EMIT_SIGNAL:
-		self.callv("emit_signal", [relay_message.args['signal_name']] + relay_message.args['args'])
-		return true
+# 	elif relay_message.message_type == RelayMessage.Type.EMIT_SIGNAL:
+# 		self.callv("emit_signal", [relay_message.args['signal_name']] + relay_message.args['args'])
+# 		return true
+
+# 	elif relay_message.message_type == RelayMessage.Type.ADD_ON_BROADCAST_CALLBACK:
+# 		self.add_on_broadcast_callback(relay_message.args['broadcast_name'], relay_message.args['callback'])
+# 		return true
+	
+# 	elif relay_message.message_type == RelayMessage.Type.ADD_CONDITION_CALLBACK:
+# 		var condition = relay_message.args['condition']
+# 		var callback = relay_message.args['callback']
+# 		if condition not in self.condition_events.keys():
+# 			self.condition_events[condition] = []
+# 		self.condition_events[condition].append(callback)
+# 		return true
 		
-	elif relay_message.message_type == RelayMessage.Type.ATTACH_ON_BROADCAST_CALLBACK:
-		self.add_on_broadcast_callback(relay_message.args['broadcast_name'], relay_message.args['callback'])
-		return true
-		
-	return false
+# 	return false
 	
 
 
@@ -274,8 +336,8 @@ func _handle_message(relay_message: RelayMessage) -> bool:
 # 	return self
 	
 func keep_alive() -> State:
-	## Stops the State from automatically-exiting if there are no Update Events defined.
-	self._exit_after_enter_if_no_update_events = false
+	## Stops the State from automatically-exiting if there are no process Events defined.
+	self._exit_after_enter_if_no_process_events = false
 	return self
 
 #func emit_signal_on(signal_name: StringName, condition: Variant, args: Array = []) -> State:
@@ -288,43 +350,63 @@ func enter() -> bool:
 	self.props = {}
 	var custom_enter_method_return_value: bool = false
 	
+	# REset timers:
+	for timer in self._timers.values():
+		print("resetting timers")
+		timer.reset()
+	
+	for condition_event in self.condition_events.keys():
+		if condition_event.call():
+			for callback in self.condition_events[condition_event]:
+				callback.call()
+	
 	for enter_method in self.enter_events:
-		if is_method_still_bound(enter_method):
-			if enter_method.get_argument_count() > 0:
-				if enter_method.call(self):
-					custom_enter_method_return_value = true
-			else:
-				if enter_method.call():
-					custom_enter_method_return_value = true
+		#if is_method_still_bound(enter_method):
+		if enter_method.get_argument_count() > 0:
+			if enter_method.call(self):
+				custom_enter_method_return_value = true
+		else:
+			if enter_method.call():
+				custom_enter_method_return_value = true
 	self.entered.emit()
 	return custom_enter_method_return_value
 
-func update(delta: float, speed_scale: float = 1) -> bool:
-	if self._debug: print(self.id, " UPDATING ", StateStatus.keys()[self.status])
+func process(delta: float, speed_scale: float = 1) -> bool:
+	if self._debug: print(self.id, " PROCESSING ", StateStatus.keys()[self.status])
+	
+	# TODO: should this go after the custom_process_method_return_value return check???
+	for condition_event in self.condition_events.keys():
+		if condition_event.call():
+			for callback in self.condition_events[condition_event]:
+				callback.call()
+
+	for timer_duration in self._timers.keys():
+		self._timers[timer_duration].process(timer_duration, delta)
 		
-	var custom_update_method_return_value: bool = false
-	for update_method in self.update_events:
+	if self.status != StateStatus.RUNNING:
+		return true
+	
+	var custom_process_method_return_value: bool = false
+	for process_method in self.process_events:
 		#if self.status == StateStatus.EXITED:
 			#custom_update_method_return_value = true
 			#break
-		if is_method_still_bound(update_method):
-			if update_method.get_argument_count() == 0:
-				if update_method.call():
-					custom_update_method_return_value = true
-			elif update_method.get_argument_count() == 1:
-				if update_method.call(delta * speed_scale):
-					custom_update_method_return_value = true
-			else:
-				if update_method.call(delta * speed_scale, self):
-					custom_update_method_return_value = true
-		
-	#for action in self.actions:
-		#action.call()
-	if not custom_update_method_return_value:
-		if self._exit_after_enter_if_no_update_events and len(self.update_events) == 0:
+		#if is_method_still_bound(update_method):
+		if process_method.get_argument_count() == 0:
+			if process_method.call():
+				custom_process_method_return_value = true
+		elif process_method.get_argument_count() == 1:
+			if process_method.call(delta * speed_scale):
+				custom_process_method_return_value = true
+		else:
+			if process_method.call(delta * speed_scale, self):
+				custom_process_method_return_value = true
+				
+	if not custom_process_method_return_value:
+		if self._exit_after_enter_if_no_process_events and len(self.process_events) == 0:
 			return true
-	self.updated.emit(delta * speed_scale)
-	return custom_update_method_return_value
+	self.processed.emit(delta * speed_scale)
+	return custom_process_method_return_value
 
 
 ## Handles the exit routine for the state.
@@ -336,15 +418,16 @@ func update(delta: float, speed_scale: float = 1) -> bool:
 func exit() -> bool:
 	if self._debug: print(self.id, " EXIT (State) : ", StateStatus.keys()[self.status])
 	if self.status == StateStatus.RUNNING:
-		self.status = StateStatus.EXITED
+		self.status = StateStatus.EXITING
 		for exit_method in self.exit_events:
-			if is_method_still_bound(exit_method):
-				if exit_method.get_argument_count() == 1:
-					exit_method.call(self)
-				else:
-					exit_method.call()
+			#if is_method_still_bound(exit_method):
+			if exit_method.get_argument_count() == 1:
+				exit_method.call(self)
+			else:
+				exit_method.call()
 		
 		self.exited.emit()
+		self.status = StateStatus.EXITED
 		return true
 	return false
 	
@@ -370,7 +453,7 @@ func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), sp
 		#return false
 		
 	if self.status == StateStatus.RUNNING:
-		if self.update(delta, speed_scale):
+		if self.process(delta, speed_scale):
 			self.exit()
 			
 	if self.status == StateStatus.EXITED:
@@ -399,20 +482,27 @@ func run_instantly(timeout_duration_s: float = 0.25):
 	return true
 
 
-
-
-
-func is_method_still_bound(method: Callable) -> bool:
-	if method.get_object() == null:
-		push_error("ERROR: attemping to call method on State which has become unbound: ", self.created_by)
-		return false
-	return true
+# func is_method_still_bound(method: Callable) -> bool:
+# 	if method.get_object() == null:
+# 		push_error("ERROR: attemping to call method on State which has become unbound: ", self.created_by)
+# 		return false
+# 	return true
 	
 func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):
 		indent_string += " "
-	return indent_string + self.id + ": " + self.get_status_string() + "e" + str(len(self.enter_events))
+		
+	var timer_string: String = ""
+	for timer in self._timers.values():
+		timer_string += "{0}".format({0: timer.elapsed_time})
+		
+	return "{indent_string} {id} : {status} -> {timers}".format({
+		'indent_string': indent_string,
+		'id': self.id,
+		'status': self.get_status_string(),
+		'timers': timer_string
+	})
 
 func get_status_string() -> String:
 	return StateStatus.keys()[self.status]
@@ -451,7 +541,7 @@ func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16,
 		info_color_b.a = 0.5
 		y_offset += _draw_text_with_box("Status: {0}".format({0: self.get_status_string()}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Enter Events: {0}".format({0: len(self.enter_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
-		y_offset += _draw_text_with_box("Update Events: {0}".format({0: len(self.update_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
+		y_offset += _draw_text_with_box("Process Events: {0}".format({0: len(self.process_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		y_offset += _draw_text_with_box("Exit Events: {0}".format({0: len(self.exit_events)}), position + Vector2(max(16, padding_size), y_offset), text_size, padding_size, node, colors[0], info_color_b).y
 		var signal_names = []
 		for signal_info in get_signal_list():

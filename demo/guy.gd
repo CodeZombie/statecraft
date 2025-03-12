@@ -24,7 +24,7 @@ func _ready() -> void:
 			self.scale = Vector2(1,1)
 			self.position.x = 300
 			)
-		.add_update_event(func(delta: float, state: State):
+		.add_process_event(func(delta: float, state: State):
 			self.position = lerp(self.position, pos_a.position, speed * delta)
 			if self.position.distance_to(pos_a.position) < 10:
 				state.emit_signal("finished_moving", 32)
@@ -37,7 +37,7 @@ func _ready() -> void:
 		TweenState.new("move_to_pos_b", self, func(tween):
 			tween.tween_property(self, "scale", Vector2(2, 2), 2)
 			)\
-		.add_update_event(func(_delta, state):
+		.add_process_event(func(_delta, state):
 			self.position = lerp(self.position, pos_b.position, speed * _delta)
 			if self.position.distance_to(pos_b.position) < 10:
 				state.exit())
@@ -63,7 +63,7 @@ func _ready() -> void:
 
 func get_move_state(state_name: String, target_position: Vector2) -> State:
 	return State.new(state_name)\
-	.add_update_event(func(delta: float):
+	.add_process_event(func(delta: float):
 		self.position = lerp(self.position, target_position, speed * delta)
 		if self.position.distance_to(target_position) < 10:
 			return true

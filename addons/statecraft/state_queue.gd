@@ -14,12 +14,12 @@ var _child_states: Array[State] = []
 		#self.propagate_permanent_messages_to_relay_node(state)
 		##forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 
-func add_state(state: State) -> StateContainer:
+func add(state: State) -> StateContainer:
 	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	return self.add_state_back(state)
 
 func add_state_back(state: State) -> StateContainer:
-	self.propagate_permanent_messages_to_relay_node(state)
+	self.propagate_permanent_messages_to_child_node(state)
 	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_back(state)
 	return self
@@ -29,7 +29,7 @@ func add_state_back(state: State) -> StateContainer:
 #		Does the name even make sense?
 
 func add_state_front(state: State, run_immediately: bool = true) -> StateContainer:
-	self.propagate_permanent_messages_to_relay_node(state)
+	self.propagate_permanent_messages_to_child_node(state)
 	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	self._child_states.push_front(state)
 	if not run_immediately and self.status != StateStatus.READY:
@@ -49,10 +49,10 @@ func get_current_state() -> State:
 			return state
 	return null
 	
-func get_all_states() -> Array[State]:
-	return self._child_states
-	
-func get_children() -> Array:
+#func get_all_states() -> Array[State]:
+	#return self._child_states
+	#
+func get_all_children() -> Array:
 	return self._child_states
 	
 func have_all_states_exited() -> bool:
@@ -61,7 +61,7 @@ func have_all_states_exited() -> bool:
 			return false
 	return true
 
-func update(delta: float, speed_scale: float = 1.0) -> bool:
+func process(delta: float, speed_scale: float = 1.0) -> bool:
 	var r_val: bool = super(delta, speed_scale)
 	if r_val:
 		return true
@@ -99,5 +99,5 @@ func clear():
 		state.exit()
 	self._child_states.clear()
 
-func copy(new_id: StringName = self.id, _new_state = null) -> StateQueue:
+func copy(new_id: NodePath = self.id, _new_state = null) -> StateQueue:
 	return super(new_id, StateQueue.new(new_id) if not _new_state else _new_state)

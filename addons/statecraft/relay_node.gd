@@ -18,24 +18,24 @@ var permanent_messages: Dictionary[RelayMessage, bool]
 var _debug: bool = false
 
 func _init(id_: NodePath):
-	assert(id_.get_name_count() == 1, "RelayNode id must be a single path: \"{0}\"".format({0: id_}))
-	assert(id_.get_subname_count() == 0, "RelayNode id must be not contain subnames: \"{0}\"".format({0: id_}))
+	#assert(id_.get_name_count() == 1, "RelayNode id must be a single item, not path: \"{0}\"".format({0: id_}))
+	#assert(id_.get_subname_count() == 0, "RelayNode id must be not contain subnames: \"{0}\"".format({0: id_}))
 	self.id = id_
 
 func get_all_children() -> Array:
 	return []
 	
 func get_children(node_path: NodePath) -> Array:
-	var matches: RelayNode = []
+	var matches: Array[RelayNode] = []
 	for child in self.get_all_children():
 		if node_path.get_name_count() == 1:
 			if child.id == node_path:
 				matches.append(child)
 		else:
-			var next_child: NodePath = node_path.get_name(0)
-			if child.id == next_child or next_child == ^"*" or next_child == ^"**":
+			var next_child: StringName = node_path.get_name(0)
+			if child.id == next_child or next_child == &"*" or next_child == &"**":
 				matches += child.get_children(node_path.slice(1))
-				if next_child == ^"**":
+				if next_child == &"**":
 					matches += child.get_children(node_path)
 	return matches
 
@@ -59,9 +59,9 @@ func propagate_permanent_messages_to_child_node(child_node: RelayNode) -> void:
 			continue
 		var descendant_message_copy: RelayMessage = relay_message.get_descendant_copy()
 		if relay_message.is_double_wildcard():
-			relay_node.recieve_message(relay_message)
-		elif relay_message.next_node_is(relay_node.id):
-			relay_node.recieve_message(descendant_message_copy)
+			child_node.recieve_message(relay_message)
+		elif relay_message.next_node_is(child_node.id):
+			child_node.recieve_message(descendant_message_copy)
 
 func propagate_message_to_children(relay_message: RelayMessage) -> void:
 	if relay_message.is_terminal():
@@ -69,7 +69,7 @@ func propagate_message_to_children(relay_message: RelayMessage) -> void:
 	
 	var descendant_message_copy: RelayMessage = relay_message.get_descendant_copy()
 	
-	for child in self.get_children():
+	for child in self.get_all_children():
 		if relay_message.next_node_is(child.id):
 			child.recieve_message(descendant_message_copy)
 		if relay_message.is_double_wildcard():
@@ -82,28 +82,32 @@ func recieve_message(relay_message: RelayMessage) -> void:
 		
 	if relay_message.is_double_wildcard():
 		self.recieve_message(relay_message.get_descendant_copy())
-	if relay_message.is_terminal():
-		if self._handle_message(relay_message):
-			if relay_message.permanent:
-				if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
-				self.permanent_messages.erase(relay_message)
-	else:
-		self.propagate_message_to_children(relay_message)
+	relay_message.handle(self)
+
+	# if relay_message.is_terminal():
+	# 	if self._handle_message(relay_message):
+	# 		if relay_message.permanent:
+	# 			if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
+	# 			self.permanent_messages.erase(relay_message)
+	# else:
+	# 	self.propagate_message_to_children(relay_message)
 
 func handle_all_permanent_messages() -> void:
 	for relay_message in self.permanent_messages.keys():
 		if relay_message.is_terminal():
-			if self._handle_message(relay_message):
-				if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
-				self.permanent_messages.erase(relay_message)
+			relay_message.handle(self)
+			# if self._handle_message(relay_message):
+			# 	if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
+			# 	self.permanent_messages.erase(relay_message)
 			
-func handle_all_permanent_messages_of_type(message_type: int) -> void:
+func handle_all_permanent_messages_of_type(method_name: StringName) -> void:
 	for relay_message in self.permanent_messages.keys():
-		if relay_message.is_terminal() and relay_message.message_type == message_type:
-			if self._handle_message(relay_message):
-				if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
-				self.permanent_messages.erase(relay_message)
+		if relay_message.is_terminal() and relay_message.method_name == method_name:
+			relay_message.handle(self)
+			# if self._handle_message(relay_message):
+			# 	if self._debug: print("{id} message handled: {msg}".format({'id': self.id, 'msg': relay_message.to_string()}))
+			# 	self.permanent_messages.erase(relay_message)
 
-func _handle_message(relay_message: RelayMessage) -> bool:
-	assert(false, "Cannot call `_handle_message` on base RelayNode class.")
-	return false
+# func _handle_message(relay_message: RelayMessage) -> bool:
+# 	assert(false, "Cannot call `_handle_message` on base RelayNode class.")
+# 	return false

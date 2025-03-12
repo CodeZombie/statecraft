@@ -56,19 +56,40 @@ func _init(condition: Callable, invert: bool = false):
 	#spe.attach_to_state(state, callable_, running_state_paths)
 	
 	
-func attach_to_state(state: State, callable: Callable, running_state_paths: Array = [&""]) -> void:
-	var condition_: Callable = State._bind_with_optional_state(state, self.condition)
-	var callable_: Callable = State._bind_with_optional_state(state, callable)
+
+
+func attach_to_state(state: State, callable: Callable, target_state_paths: Array[NodePath] = [^""] as Array[NodePath]) -> void:
+	var bound_condition: Callable = SCUtils.weakbind_state_to_callable(state, self.condition)
+	if self.invert:
+		bound_condition = func(): return not bound_condition.call()
+
+	var bound_callable: Callable = SCUtils.weakbind_state_to_callable(state, callable)
+
+	for target_state_path in target_state_paths:
+		if target_state_path.get_name_count() == 0:
+			state.add_on_condition_event(bound_condition, bound_callable)
+		else:
+			state.recieve_message(RelayMessage.new(
+				target_state_path,
+				&"add_on_condition_event",
+				[bound_condition, bound_callable],
+				true
+			))
+
+
+# func attach_to_state(state: State, callable: Callable, running_state_paths: Array = [&""]) -> void:
+# 	var condition_: Callable = State._bind_with_optional_state(state, self.condition)
+# 	var callable_: Callable = State._bind_with_optional_state(state, callable)
 	
 	
-	for state_path in running_state_paths:
-		state.recieve_message(RelayMessage.new(
-			state_path,
-			RelayMessage.Type.ADD_UPDATED_CALLBACK,
-			{
-				'callable': func(): if condition_.call(): callable_.call()
-			}
-		))
+# 	for state_path in running_state_paths:
+# 		state.recieve_message(RelayMessage.new(
+# 			state_path,
+# 			RelayMessage.Type.ADD_UPDATED_CALLBACK,
+# 			{
+# 				'callable': func(): if condition_.call(): callable_.call()
+# 			}
+# 		))
 	
 	#var callable_: Callable = func(delta: float, state_: State):
 		#if condition_:

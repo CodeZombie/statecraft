@@ -4,7 +4,7 @@ var scene_node: Node
 var tween: Tween
 var tween_definition_method: Callable
 var _finished: bool = false
-var _tween_execution_position: State.ExecutionPosition = State.ExecutionPosition.POST_UPDATE
+var _tween_execution_position: State.ExecutionPosition = State.ExecutionPosition.POST_PROCESS
 
 func _init(state_id: String, scene_node: Node, tween_definition_method: Callable):
 	super(state_id)
@@ -31,8 +31,8 @@ func set_tween_execution_position(execution_position: State.ExecutionPosition) -
 	self._tween_execution_position = execution_position
 	return self
 	
-func update(delta: float, speed_scale: float = 1):
-	if self._tween_execution_position == State.ExecutionPosition.PRE_UPDATE:
+func process(delta: float, speed_scale: float = 1):
+	if self._tween_execution_position == State.ExecutionPosition.PRE_PROCESS:
 		if super(delta, speed_scale):
 			return true
 		
@@ -41,7 +41,7 @@ func update(delta: float, speed_scale: float = 1):
 		if self._finished:
 			return true
 		
-	if self._tween_execution_position == State.ExecutionPosition.POST_UPDATE:
+	if self._tween_execution_position == State.ExecutionPosition.POST_PROCESS:
 		if super(delta, speed_scale):
 			return true
 		
@@ -56,7 +56,7 @@ func exit() -> bool:
 		return true
 	return false
 	
-func copy(new_id: StringName = self.id, _new_state = null):
+func copy(new_id: NodePath = self.id, _new_state = null):
 	return super(new_id, TweenState.new(new_id, self.scene_node, self.tween_definition_method) if not _new_state else _new_state)
 
 func as_string(indent: int = 0) -> String:
@@ -64,6 +64,15 @@ func as_string(indent: int = 0) -> String:
 	for i in range(indent):
 		indent_string += " "
 	if self.tween:
-		return indent_string + self.id + ": " + self.get_status_string() + "e " + str(snapped(self.tween.get_total_elapsed_time(), 0.01))
+		return "{indent_string} {id} : {status} elapsed: {elapsed}".format({
+			'indent_string': indent_string,
+			'id': self.id,
+			'status': self.get_status_string(),
+			'elapsed': str(snapped(self.tween.get_total_elapsed_time(), 0.01))
+		})
 	else:
-		return indent_string + self.id + ": " + self.get_status_string() 
+		return "{indent_string} {id} : {status}".format({
+			'indent_string': indent_string,
+			'id': self.id,
+			'status': self.get_status_string(),
+		})
