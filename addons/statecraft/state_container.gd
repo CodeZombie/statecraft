@@ -9,7 +9,7 @@ var signal_handles: Dictionary = {}
 
 func _init(id: NodePath):
 	super(id)
-	self.keep_alive()
+	self._exit_after_enter_if_no_process_events = false
 	
 func enter() -> bool:
 	if self._debug: print(self.id, " ENTER (StateContainer)")
@@ -32,25 +32,20 @@ func get_running_states() -> Array[State]:
 	assert(false, "Cannot call `get_running_states()` on abstract class StateContainer")
 	return []
 	
-#func get_all_states() -> Array[State]:
-	#assert(false, "Cannot call `get_all_states()` on abstract StateContainer.")
-	#return []
-
 func get_states(state_id: NodePath) -> Array[State]:
 	var matches: Array[State] = []
 	for state in self._child_states:
 		if state.id == state_id:
 			matches.append(state)
 	return matches
+
+func from(from_state_nodepath: NodePath) -> EventActionCreator:
+	return EventActionCreator.new(self, [from_state_nodepath])
 	
 	
 func transition_to(state_path: NodePath) -> StateContainer:
 	if self._debug: print("{0} is passing a transition event: {to}".format({0: self.id, 'to': state_path}))
-	#var state_path: Array
-	#if state_id.contains('.'):
-		#state_path = Array(state_id.split('.'))
-		#state_id = state_path.pop_front()
-	
+
 	var target_states: Array[State] = self.get_states(NodePath(state_path.get_name(0)))
 	
 	if len(target_states) == 0:
@@ -61,32 +56,6 @@ func transition_to(state_path: NodePath) -> StateContainer:
 			target_state.transition_to(state_path.slice(1))
 	
 	return self
-	
-
-
-#func is_running(state_to_path: StringName = &"") -> bool:
-	#var children: Array = [self]
-	#if state_to_path != &"":
-		#children = self.get_children_via_path(state_to_path)
-	#for child in children:
-		#if child.status == StateStatus.RUNNING:
-			#return true
-	#return false
-
-# Recursive tree-search is probably a red flag in a high-performance library like this, 
-# but what can ya do :^)
-#func is_running(state_id: StringName) -> bool:
-	#var target_state_path: Array = state_id.split('.')
-	#if len(target_state_path) > 1:
-		#var next_node = target_state_path.pop_front()
-		#for child in self.get_states(next_node):
-			#if child.is_running(".".join(target_state_path)):
-				#return true
-	#else:
-		#for child in self.get_states(state_id):
-			#if child.status == StateStatus.RUNNING:
-				#return true
-	#return false
 	
 func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""

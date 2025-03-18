@@ -6,7 +6,7 @@ class BasicStateUnitTestSuite extends UnitTestSuite:
 	var exit_calls: int = 0
 	var message_calls: int = 0
 	
-	func preflight():
+	func setup():
 		self.enter_calls = 0
 		self.update_calls = 0
 		self.exit_calls = 0
@@ -42,7 +42,7 @@ class BasicStateUnitTestSuite extends UnitTestSuite:
 class BasicSuite extends UnitTestSuite:
 	var value_a: int = 0
 	
-	func preflight():
+	func setup():
 		self.value_a = 0
 	
 	func fixture_simple_state() -> State:
@@ -84,7 +84,7 @@ class BasicSuite extends UnitTestSuite:
 class BasicEnterAndUpdateSuite extends UnitTestSuite:
 	var value_a: int = 0
 	
-	func preflight():
+	func setup():
 		self.value_a = 0
 
 	func fixture_basic_state() -> State:
@@ -129,7 +129,7 @@ class BasicEnterAndUpdateSuite extends UnitTestSuite:
 class BasicEnterAndUpdateAndExitSuite extends UnitTestSuite:
 	var value_a: int = 0
 	
-	func preflight():
+	func setup():
 		self.value_a = 0
 	
 	func fixture_basic_state() -> State:
@@ -176,7 +176,7 @@ class BasicEnterAndUpdateAndExitSuite extends UnitTestSuite:
 class BasicExitSuite extends UnitTestSuite:
 	var value_a: int = 0
 	
-	func preflight():
+	func setup():
 		self.value_a = 0
 	
 	func fixture_basic_state() -> State:
@@ -216,7 +216,7 @@ class BasicExitSuite extends UnitTestSuite:
 class BasicPropTestSuite extends UnitTestSuite:
 	var value_a: int = 0
 	
-	func preflight():
+	func setup():
 		self.value_a = 0
 	
 	func fixture_basic_state() -> State:
@@ -322,7 +322,7 @@ class BasicSignalTest extends UnitTestSuite:
 	
 	var value_a: String = ""
 	
-	func preflight():
+	func setup():
 		self.value_a = ""
 	
 	func fixture_simple_signal_state() -> State:
@@ -429,7 +429,7 @@ class BasicSignalTest extends UnitTestSuite:
 	func _after_state_freed_a():
 		# `state` is freed a thtis point, so the signal should not be connected
 		#	to anything any more.
-		self.preflight()
+		self.setup()
 		self.test_signal.emit()
 		assert(self.value_a == "")
 		
@@ -486,7 +486,7 @@ class BasicStateTestSuite extends BasicStateUnitTestSuite:
 		state.exit()
 		assert(self.exit_calls == 1, "Exit event should be called.")
 		assert(state.status == State.StateStatus.EXITED, "State status should be EXITED after calling exit().")
-		self.preflight()
+		self.setup()
 		state.reset()
 		state.run()
 		assert(self.exit_calls == 1)
@@ -713,7 +713,7 @@ class StateQueueBasicTestSuite extends BasicStateUnitTestSuite:
 
 class BasicStateMachineTest extends BasicStateUnitTestSuite:
 	var value_a: int = 0
-	func preflight():
+	func setup():
 		super()
 		self.value_a = 0
 		

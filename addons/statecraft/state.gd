@@ -20,32 +20,13 @@ var skippable: bool
 var created_by: String
 var status: StateStatus = StateStatus.READY
 var props: Dictionary = {}
-#var actions: Array[Callable] = []
-#var message_handlers: Dictionary[String, Array] = {}
 var _exit_after_enter_if_no_process_events: bool = true
 var loop: bool = false
 var _debug_draw_label_running_color_fade_factor: float = 0.0
 
-#var _signal_virtual_connections: Dictionary[StringName, Array] = {}
-
 var _timers: Dictionary[float, SCUtils.CallbackTimer] = {}
 
 var _unique_id_counter: int = 0
-
-# Timers can:
-#	emit a signal
-#	make a broadcast
-#	run a function
-#	execute a transition (?)
-#	after_timer(0.5).emit_signal("my_sig")
-#	after_timer(0.5, "my_signal").broadcast("my_bcast")
-#	after_timer(0.5).execute(func(): pass)
-#	after_timer(0.5).transition_to(&"state_node")
-#	after_timer(0.5).set_blackboard_value(&"can_jump", true)
-
-
-		
-#var _countdowns: Array[Countdown]
 
 ###
 ### STATIC METHODS
@@ -83,49 +64,41 @@ func copy(new_id: NodePath = self.id, new_state = null) -> State:
 		new_state.add_exit_event(exit_method)
 	return new_state
 
-func _init(id: String):
+func _init(id: NodePath, auto_exit=true):
 	super(id)
-	self.id = id
+	self._exit_after_enter_if_no_process_events = auto_exit
 	
 	for call_dict in get_stack():
 		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
-#func is_running(state_to_path: StringName = &"") -> bool:
-	#return self.status == StateStatus.RUNNING
 
 ###
 ### EVENT HANDLER FACTORY CREATORS
 ###
 
-func on_enter() -> EventHandlerFactory:
-	return self.on_signal_path(^":entered")
-	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.ENTERED))
+func on_enter() -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_enter()
 
-# func on_update() -> EventHandlerFactory:
-# 	return self.on_signal_path("updated")
-# 	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.UPDATED))
+func on_exit() -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_exit()
 
-func on_exit() -> EventHandlerFactory:
-	return self.on_signal_path(^":exited")
-	#return EventHandlerFactory.new(self, StateEvent.new(StateEvent.EventType.EXITED))
+func on_broadcast(broadcast_name: StringName) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_broadcast(broadcast_name)
 
-func on_broadcast(broadcast_name: StringName) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, BroadcastEvent.new(broadcast_name))
+func on_signal(sig: Signal, arg_filter: Variant = null) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_signal(sig, arg_filter)
 
-func on_signal(sig: Signal) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, SignalEvent.new(sig))
+func on_signal_path(signal_path: String) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_signal(signal_path)
 
-func on_signal_path(signal_path: String) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, SignalPathEvent.new(signal_path))
+func on_timer(duration: float) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_timer(duration)
 
-func on_timer(duration: float) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, TimerEvent.new(duration))
+func if_true(condition: Callable) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).if_true(condition)
 
-func on(condition: Callable) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, ConditionEvent.new(condition))
-
-func on_inv(condition: Callable) -> EventHandlerFactory:
-	return EventHandlerFactory.new(self, ConditionEvent.new(condition, true))
+func if_false(condition: Callable) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).if_false(condition)
 
 
 ###
@@ -174,175 +147,17 @@ func add_on_broadcast_event(broadcast_name: StringName, callable: Callable) -> S
 			callable.call())
 	return self
 
-###
-### Relay Message Creators
-###
-
-# func create_add_entered_callback_message(target_path: NodePath, callable: Callable) -> RelayMessage:
-# 	return RelayMessage.new(
-# 		target_path,
-# 		RelayMessage.Type.ADD_ENTERED_CALLBACK,
-# 		{
-# 			'callable': callable
-# 		},
-# 		true
-# 	)
-
-# func create_add_exited_callback_message(target_path: NodePath, callable: Callable) -> RelayMessage:
-# 	return RelayMessage.new(
-# 		target_path,
-# 		RelayMessage.Type.ADD_EXITED_CALLBACK,
-# 		{
-# 			'callable': callable
-# 		},
-# 		true
-# 	)
-
-# func create_add_condition_callback_message(target_path: NodePath, condition: Callable, callback: Callable) -> RelayMessage:
-# 	return RelayMessage.new(
-# 		target_path,
-# 		RelayMessage.Type.ADD_CONDITION_CALLBACK,
-# 		{
-# 			'condition': condition,
-# 			'callback': callback
-# 		},
-# 		true
-# 	)
-
-# func create_add_on_broadcast_callback_message(target_path: NodePath, broadcast_name: StringName, callable: Callable) -> RelayMessage:
-# 	return RelayMessage.new(
-# 		target_path,
-# 		RelayMessage.Type.ADD_ON_BROADCAST_CALLBACK,
-# 		{
-# 			'broadcast_name': broadcast_name,
-# 			'callback': callable
-# 		},
-# 		true
-# 	)
-
-# func create_on_timer_callback_message(target_path: NodePath, duration: float, position: ExecutionPosition, callable: Callable) -> RelayMessage:
-# 	RelayMessage.new(
-# 		target_path,
-# 		RelayMessage.Type.ADD_TIMER_CALLBACK,
-# 		{
-# 			'duration': duration,
-# 			'position': position,
-# 			'callable': callable
-# 		},
-# 		true
-# 	)
-
-
-###
-### ACTIONS
-###
-
 func broadcast(broadcast_name: StringName) -> void:
-	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [broadcast_name], false))
+	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [broadcast_name]))
 
 func set_prop(key: String, value: Variant) -> State:
 	self.props[key] = value
 	return self
 
-
-
-# func _handle_message(relay_message: RelayMessage) -> bool:
-# 	if super(relay_message):
-# 		return true
-# 	# if relay_message.message_type == RelayMessage.Type.ADD_ENTERED_CALLBACK:
-# 	# 	self.add_updated_callback(relay_message.args['callable'])
-# 	# 	return true
-# 	# if relay_message.message_type == RelayMessage.Type.ADD_UPDATED_CALLBACK:
-# 	# 	self.add_updated_callback(relay_message.args['callable'])
-# 	# 	return true
-# 	# if relay_message.message_type == RelayMessage.Type.ADD_EXITED_CALLBACK:
-# 	# 	self.add_updated_callback(relay_message.args['callable'])
-# 	# 	return true
-# 	if relay_message.message_type == RelayMessage.Type.CALL_METHOD:
-# 		if self._debug: print("{0}.handle_message[{1}]({2}({3}))".format({0:self.id, 1: relay_message.message_type, 2: relay_message.args['method_name'], 3: relay_message.args['args']}))
-# 		self.callv(relay_message.args['method_name'], relay_message.args['args'])
-# 		return true
-		
-# 	elif relay_message.message_type == RelayMessage.Type.EMIT_SIGNAL:
-# 		self.callv("emit_signal", [relay_message.args['signal_name']] + relay_message.args['args'])
-# 		return true
-
-# 	elif relay_message.message_type == RelayMessage.Type.ADD_ON_BROADCAST_CALLBACK:
-# 		self.add_on_broadcast_callback(relay_message.args['broadcast_name'], relay_message.args['callback'])
-# 		return true
-	
-# 	elif relay_message.message_type == RelayMessage.Type.ADD_CONDITION_CALLBACK:
-# 		var condition = relay_message.args['condition']
-# 		var callback = relay_message.args['callback']
-# 		if condition not in self.condition_events.keys():
-# 			self.condition_events[condition] = []
-# 		self.condition_events[condition].append(callback)
-# 		return true
-		
-# 	return false
-	
-
-
-# func on_broadcast(broadcast_name: StringName, callable: Callable) -> State:
-# 	self.broadcast_.connect(func(broadcast_name_: StringName):
-# 		if self.status == StateStatus.RUNNING and broadcast_name == broadcast_name_:
-# 			callable.call())
-# 	return self
-
-
-#func add_to_runner(state_runner: StateContainer) -> State:
-	#state_runner.add_state(self)
-	#return self
-	
-
-
-
-
-# Action Factory:
-# on("signal_name").send_broadcast()
-# on("...").emit_signal()
-# on("...").transition_to(...)
-# on("...").
-# on(TimerEvent.new(0.25).and
-#func on(event: Event) -> EventHandlerFactory:
-	#return EventHandlerFactory.new(self, event)
-	#if condition is Signal:
-		#self.on_signal(condition, action)
-		#
-	#elif condition is String:
-		#self.on_signal_path(condition, action)
-		#
-	#elif condition is Callable:
-		#self.on_callable(condition, action)
-		#
-	#elif condition is Countdown:
-		#self.on_signal(condition.elapsed, action)
-		#
-	#return self
-
-#func on_2(condition: Variant) -> EventHandlerFactory:
-	#return EventHandlerFactory.new()
-
-# func clear_all_enter_methods():
-# 	self.enter_events.clear()
-# 	return self
-	
-# func clear_all_update_methods():
-# 	self.update_events.clear()
-# 	return self
-	
-# func clear_all_exit_methods():
-# 	self.exit_events.clear()
-# 	return self
-	
 func keep_alive() -> State:
 	## Stops the State from automatically-exiting if there are no process Events defined.
 	self._exit_after_enter_if_no_process_events = false
 	return self
-
-#func emit_signal_on(signal_name: StringName, condition: Variant, args: Array = []) -> State:
-	#self.on(condition, self.emit_signal.bindv([signal_name] + args))
-	#return self
 	
 func enter() -> bool:
 	if self._debug: print(self.id, " ENTER (State)", StateStatus.keys()[self.status])
@@ -352,7 +167,6 @@ func enter() -> bool:
 	
 	# REset timers:
 	for timer in self._timers.values():
-		print("resetting timers")
 		timer.reset()
 	
 	for condition_event in self.condition_events.keys():
@@ -481,13 +295,6 @@ func run_instantly(timeout_duration_s: float = 0.25):
 		self.loop = true
 	return true
 
-
-# func is_method_still_bound(method: Callable) -> bool:
-# 	if method.get_object() == null:
-# 		push_error("ERROR: attemping to call method on State which has become unbound: ", self.created_by)
-# 		return false
-# 	return true
-	
 func as_string(indent: int = 0) -> String:
 	var indent_string: String = ""
 	for i in range(indent):

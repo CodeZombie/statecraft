@@ -4,89 +4,6 @@ var _signal_virtual_connections: Dictionary[StringName, Array] = {}
 
 var _unique_signal_name_interator: int = 0
 
-# TODO:
-# Implement WeakRefs for signal connections.
-# This will allow us to connect signals to states or helper objects that may need to be deleted, and we don't want
-# their references caught in signals or objects that won't allow them to delete.
-# Use this as reference: https://gist.github.com/CodeZombie/ab87f5c004364a522c5a9efc53038bd2
-# We may also want to wrap all callbacks in:
-func _wrap_weakref_callback(object: Variant, callable: Callable) -> Callable:
-	var weakref: WeakRef = weakref(object)
-	return func():
-		var object_: Object = weakref.get_ref()
-		if object_:
-			callable.call(object_)
-
-# So now when we want to attach a child_state_a's callback `func(child_state): ...` to a parent state,
-# we can do `parent_state.add_on_enter_callbac(_wrap_weakref_callback(child_state_a, func(state): print(state.id)))`
-# and that'll work up until child_state_a is deleted, at which point the callback stops working.
-
-###
-### PUBLIC METHODS
-###
-
-# func create_on_signal_callback(target_path: NodePath, signal_: Variant, callable: Callable, strip_args: bool = true) -> State:
-# 	if signal_ is String:
-# 		self.recieve_message(RelayMessage.new(
-# 			target_path,
-# 			RelayMessage.Type.ADD_SIGNAL_CALLBACK,
-# 			{
-# 				'signal_name': signal_name,
-# 				'callable': callable,
-# 				'strip_args': strip_args
-# 			},
-# 			true
-# 		))
-
-# 	elif signal_ is Signal:
-# 		self.recieve_message(RelayMessage.new(
-# 			target_path,
-# 			RelayMessage.Type.ADD_SIGNAL_CALLBACK,
-# 			{
-# 				'signal_name': signal_.get_name(),
-# 				'callable': callable,
-# 				'strip_args': strip_args
-# 			},
-# 			true
-# 		))
-# 	else:
-# 		assert(False, "Invalid signal type: {0}".format({0: signal_}))
-# 	return self
-
-	
-
-# func add_signal_callback(sig: Signal, callable: Callable, strip_args: bool = true) -> SignalRelayNode:
-# 	self.recieve_message(RelayMessage.new(
-# 		^"",
-# 		RelayMessage.Type.CONNECT_EXTERNAL_SIGNAL,
-# 		{
-# 			"signal": sig,
-# 			"callable": callable,
-# 			"flags": 0,
-# 			"strip_args": strip_args
-# 		},
-# 		false
-# 	))
-# 	return self
-
-# func add_signal_path_callback(signal_path: NodePath, callable: Callable, strip_args: bool = true) -> SignalRelayNode:
-
-# 	var signal_name: StringName = signal_path.get_subname(0)
-# 	var target_node_path: NodePath = NodePath(signal_path.get_concatenated_names())
-
-# 	self.recieve_message(RelayMessage.new(
-# 		target_node_path,
-# 		RelayMessage.Type.CONNECT_INTERNAL_SIGNAL,
-# 		{
-# 			"signal_name": signal_name,
-# 			"callable": callable,
-# 			"flags": 0,
-# 			"strip_args": strip_args
-# 		},
-# 		true
-# 	))
-# 	return self
-	
 func create_unique_signal() -> Signal:
 	var signal_name: StringName = StringName("__INTERNAL_SIGNAL_{0}".format({0:self._unique_signal_name_interator}))
 	self._unique_signal_name_interator += 1
@@ -95,8 +12,7 @@ func create_unique_signal() -> Signal:
 
 func add_user_signal(signal_name: String, arguments: Array = []) -> void:
 	super(signal_name, arguments)
-	self.handle_all_permanent_messages_of_type(&"connect_signal_via_path")
-	#self.handle_all_permanent_messages_of_type(RelayMessage.Type.CONNECT_INTERNAL_SIGNAL)
+	self.handle_all_relay_messages_of_type(&"connect_signal_via_path")
 	
 func add_signal(signal_name: String, arguments: Array = []) -> SignalRelayNode:
 	self.add_user_signal(signal_name, arguments)
@@ -179,67 +95,6 @@ func _wrap_signal_callback(callable: Callable, strip_args: bool, signal_argument
 				callable.callv(args + [object])
 			else:
 				assert(false, "Callable has too many arguments ({0}) to connect to signal with an argument count of {1}".format({0: callable_arg_count, 1: signal_argument_count}))
-
-# func _handle_message(relay_message: RelayMessage) -> bool:
-# 	if self._debug: print("{id}._handle_message: {msg}".format({'id': self.id, 'msg': relay_message}))
-# 	if relay_message.message_type == RelayMessage.Type.CONNECT_SIGNAL_OBJECT:
-# 		print("{0} handling internal sig connect message".format({0: self.id}))
-# 		var signal_name: StringName = relay_message.args['signal'].get_name()
-# 		print("    ", signal_name)
-# 		var sig: Signal = relay_message.args['signal']
-# 		var signal_unique_id: StringName = StringName(signal_name + str(sig.get_object_id()))
-# 		var signal_argument_count: int = self._get_signal_argument_count(relay_message.args['signal'])
-		
-# 		var signal_callback_method: Callable
-# 		if signal_argument_count == 0:
-# 			signal_callback_method = self._signal_callback_zero
-# 		elif signal_argument_count == 1:
-# 			signal_callback_method = self._signal_callback_one
-# 		elif signal_argument_count == 2:
-# 			signal_callback_method = self._signal_callback_two
-# 		elif signal_argument_count == 3:
-# 			signal_callback_method = self._signal_callback_three
-# 		elif signal_argument_count == 4:
-# 			signal_callback_method = self._signal_callback_four
-# 		elif signal_argument_count == 5:
-# 			signal_callback_method = self._signal_callback_five
-# 		elif signal_argument_count == 6:
-# 			signal_callback_method = self._signal_callback_six
-# 		elif signal_argument_count == 7:
-# 			signal_callback_method = self._signal_callback_seven
-# 		elif signal_argument_count == 8:
-# 			signal_callback_method = self._signal_callback_eight
-# 		else:
-# 			assert(false, "Error: Cannot connect signal \"{0}\", which requires {1} arguments. StateCraft does not support connecting signals with more than 8 arguments. Please harass the Godot maintainers to add VarArg support to gdscript :)".format({0: signal_name, 1: signal_argument_count}))
-# 		if not sig.is_connected(signal_callback_method):
-# 			print("    connecting: ", signal_unique_id)
-# 			sig.connect(signal_callback_method.bind(signal_unique_id))
-		
-# 		if signal_unique_id not in self._signal_virtual_connections.keys():
-			
-# 			self._signal_virtual_connections[signal_unique_id] = []
-			
-# 		var callable: Callable = relay_message.args['callable']
-# 		if callable not in self._signal_virtual_connections[signal_unique_id]:
-# 			print("    attaching virtual")
-# 			self._signal_virtual_connections[signal_unique_id].append(self._wrap_signal_callback(callable, relay_message.args['strip_args'], signal_argument_count))
-
-# 		return true
-		
-	# elif relay_message.message_type == RelayMessage.Type.CONNECT_SIGNAL_VIA_NAME:
-	# 	print("{0}.handle(CONNECT_SIGNAL_VIA_NAME)".format({0: self.id}))
-	# 	var signal_name: StringName = relay_message.args['signal_name']
-	# 	var signal_argument_count: int = self._get_internal_signal_argument_count(signal_name)
-	# 	var callable: Callable = relay_message.args['callable']
-	# 	var callable_argument_count: int = max(callable.get_unbound_arguments_count(), callable.get_argument_count())
-	# 	if callable_argument_count == signal_argument_count:
-	# 		self.connect(signal_name, callable, relay_message.args['flags'])
-	# 	elif callable_argument_count == signal_argument_count + 1:
-	# 		self.connect(signal_name, callable.bind(self), relay_message.args['flags'])
-
-	# 	return true
-		
-	# return false
 
 func connect_signal(sig: Signal, callable: Callable, strip_args: bool = false) -> void:
 	var signal_name: StringName = sig.get_name()

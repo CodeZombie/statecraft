@@ -16,51 +16,12 @@ var current_state_id: NodePath:
 		var new_current_state = self.get_state(value)
 		new_current_state.reset()
 		
-
-func on_enter() -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, SignalPathEvent.new(^":entered"))
-
-func on_process() -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, SignalPathEvent.new(^":processed"))
-
-func on_exit() -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, SignalPathEvent.new(^":exited"))
-
-func on_broadcast(broadcast_name: StringName) -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, BroadcastEvent.new(broadcast_name))
-
-func on_signal(sig: Variant) -> StateMachineEventHandlerFactory:
-	if sig is Signal:
-		return StateMachineEventHandlerFactory.new(self, SignalEvent.new(sig))
+func from(state_node_path: Variant) -> EventActionCreator:
+	if state_node_path is Array:
+		return EventActionCreator.new(self, state_node_path)
 	else:
-		return self.on_signal_path(sig)
+		return EventActionCreator.new(self, [state_node_path])
 
-func on_signal_path(signal_path: String) -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, SignalPathEvent.new(signal_path))
-
-func on_timer(duration: float) -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, TimerEvent.new(duration))
-
-func on(condition: Callable) -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, ConditionEvent.new(condition))
-	
-func on_inv(condition: Callable) -> StateMachineEventHandlerFactory:
-	return StateMachineEventHandlerFactory.new(self, ConditionEvent.new(condition, true))
-
-
-func on_child_entered(child_state_path: NodePath) -> StateMachineEventHandlerFactory:
-	return self.on_signal_path(NodePath("{}:entered".format({0:on_signal_path})))
-	#return StateMachineEventHandlerFactory.new(self, ChildStateEvent.new(child_state_path, ChildStateEvent.EventType.ENTERED))
-
-func on_child_processed(child_state_path: NodePath) -> StateMachineEventHandlerFactory:
-	return self.on_signal_path(NodePath("{}:processed".format({0:on_signal_path})))
-	#return StateMachineEventHandlerFactory.new(self, ChildStateEvent.new(child_state_path, ChildStateEvent.EventType.UPDATED))
-
-func on_child_exited(child_state_path: NodePath) -> StateMachineEventHandlerFactory:
-	return self.on_signal_path(NodePath("{}:entered".format({0:on_signal_path})))
-	#return StateMachineEventHandlerFactory.new(self, ChildStateEvent.new(child_state_path, ChildStateEvent.EventType.EXITED))
-
-	
 ###
 ### This is psychotic - way too many interfaces. Refactor all this shit.
 ###
@@ -77,7 +38,7 @@ func is_state_running(state_id: NodePath) -> bool:
 func add(state: State) -> StateMachine:
 	if state.id in self.states:
 		push_error("StateCraft Error: State with ID \"{0}\" already present in State Machine \"{1}\"".format({0: state.id, 1: self.id}))
-	self.propagate_permanent_messages_to_child_node(state)
+	self.propagate_relay_messages_to_child_node(state)
 	self.states[state.id] = state
 	if len(self.states.keys()) == 1:
 		self.initial_state_id = state.id
@@ -98,10 +59,6 @@ func get_current_state() -> State:
 	if self.current_state_id in self.states.keys():
 		return self.states[self.current_state_id]
 	return null
-	
-#func get_all_states() -> Array[State]:
-	#return self.states.values()
-	
 
 func enter() -> bool:
 	if self._debug: print(self.id, " ENTER (StateMachine)")
@@ -132,57 +89,8 @@ func exit() -> bool:
 	self.current_state_id = self.initial_state_id
 	return x
 
-# func transition_on_exit(from: StringName, to: StringName) -> StateContainer:
-# 	self.get_state(from).exited.connect(self.transition_to.bind(to))
-# 	return self
-	
-# func from(state_id: StringName) -> TransitionChainFrom:
-# 	return TransitionChainFrom.new(self, [state_id])
-	
-# func from_any(state_ids: Array[StringName]) -> TransitionChainFrom:
-# 	return TransitionChainFrom.new(self, state_ids)
-
-# TODO: Finish fixing this
-# func transition_dynamic(from: StringName, condition: Callable) -> StateContainer:
-# 	self.recieve_message(RelayMessage.new(
-# 		from,
-# 		RelayMessage.Type.CALL_METHOD,
-# 		#{'bound_callable': State.on.bind(
-# 			#func() -> bool:
-# 				#return true,
-# 			#func():
-# 				#return false
-# 				#)
-# 		#}
-# 	))
-# 	self.actions.append(func():
-# 		if self.current_state_id == from:
-# 			if self.get_current_state().id == from and self.get_current_state().status == StateStatus.RUNNING:
-# 				var return_value = condition.call(self) if condition.get_argument_count() > 0 else condition.call()
-# 				if return_value:
-# 					self.transition_to(return_value))
-# 	return self
-		
-# func transition_on(from: StringName, to: StringName, condition: Variant, additional_callable_condition: Variant = null) -> StateContainer:
-# 	var transition_callable: Callable = self.transition_to.bind(to)
-# 	if additional_callable_condition:
-# 		transition_callable = func():
-# 			if additional_callable_condition.call():
-# 				self.transition_to(to)
-				
-# 	if condition is String:
-# 		self.on_signal_path(condition, transition_callable)
-# 	else:
-# 		self.get_state(from).on(condition, transition_callable)
-# 	return self
-	
 func transition_to(state_path: NodePath) -> StateContainer:
 	if self._debug: print("{0}.transitioning from {from} to {to}".format({0: self.id, 'from': current_state_id, 'to': state_path}))
-	
-	# var state_path: Array
-	# if state_id.contains('.'):
-	# 	state_path = Array(state_id.split('.'))
-	# 	state_id = state_path.pop_front()
 	
 	var target_state: State = self.get_state(NodePath(state_path.get_name(0)))
 	
@@ -195,18 +103,6 @@ func transition_to(state_path: NodePath) -> StateContainer:
 		self.get_current_state().transition_to(state_path.slice(1))
 	
 	return self
-	
-#func sq_t_to(state_id: StringName) -> StateContainer:
-	#var state_path: Array = Array(state_id.split('.'))
-	#if len(state_path) == 1:
-		#assert(false, "StateQueues cannot be manually transitioned")
-	#
-	#var target_state_id: String = state_path.pop_front()
-	#var target_states: Array[State] = self.get_states(target_state_id)
-	#if len(target_states) == 0:
-		#assert(false, "StateQueue attempting to pass transition to child, but child \"{}\" was not found".format({0: target_state_id}))
-	#
-	#
 	
 func transition_to_dynamic(state_id_return_method: Callable) -> StateMachine:
 	self.transition_to(SCUtils.call_with_possible_args(state_id_return_method, [self]))

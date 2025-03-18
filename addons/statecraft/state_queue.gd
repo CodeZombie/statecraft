@@ -8,19 +8,11 @@ var _exit_policy: ExitPolicy = ExitPolicy.KEEP
 
 var _child_states: Array[State] = []
 
-#func connect_deferred_signals() -> void:
-	#super()
-	#for state in self._child_states:
-		#self.propagate_permanent_messages_to_relay_node(state)
-		##forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
-
 func add(state: State) -> StateContainer:
-	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
 	return self.add_state_back(state)
 
 func add_state_back(state: State) -> StateContainer:
-	self.propagate_permanent_messages_to_child_node(state)
-	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	self.propagate_relay_messages_to_child_node(state)
 	self._child_states.push_back(state)
 	return self
 	
@@ -29,8 +21,7 @@ func add_state_back(state: State) -> StateContainer:
 #		Does the name even make sense?
 
 func add_state_front(state: State, run_immediately: bool = true) -> StateContainer:
-	self.propagate_permanent_messages_to_child_node(state)
-	#self.forward_deferred_signal_connections_to_child(state, self._deferred_signal_connections)
+	self.propagate_relay_messages_to_child_node(state)
 	self._child_states.push_front(state)
 	if not run_immediately and self.status != StateStatus.READY:
 		state.status = StateStatus.EXITED
@@ -49,9 +40,6 @@ func get_current_state() -> State:
 			return state
 	return null
 	
-#func get_all_states() -> Array[State]:
-	#return self._child_states
-	#
 func get_all_children() -> Array:
 	return self._child_states
 	

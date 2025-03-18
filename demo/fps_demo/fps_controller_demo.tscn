@@ -1,0 +1,537 @@
+[gd_scene load_steps=27 format=3 uid="uid://n2voo0can5cp"]
+
+[ext_resource type="Material" uid="uid://b5s14mpj5gowu" path="res://demo/assets/materials/noise_material.tres" id="1_ibykj"]
+[ext_resource type="Script" uid="uid://2quensr3kj81" path="res://demo/fps_demo/fps_controller.gd" id="1_mntv1"]
+[ext_resource type="PackedScene" uid="uid://vxmpekohjt3g" path="res://demo/fps_demo/gun.tscn" id="2_u58pc"]
+[ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/state_vis.gd" id="3_g8rs0"]
+
+[sub_resource type="Shader" id="Shader_g8rs0"]
+code = "// NOTE: Shader automatically converted from Godot Engine 4.4.stable's StandardMaterial3D.
+
+shader_type spatial;
+render_mode blend_mix, depth_draw_opaque, cull_back, diffuse_burley, specular_schlick_ggx;
+
+uniform vec4 albedo : source_color;
+uniform sampler2D texture_albedo : source_color, filter_linear_mipmap, repeat_enable;
+uniform sampler2D texture_albedo_two : source_color, filter_linear_mipmap, repeat_enable;
+uniform ivec2 albedo_texture_size;
+uniform float point_size : hint_range(.1, 128.0, 0.1);
+
+uniform float roughness : hint_range(0.0, 1.0);
+uniform sampler2D texture_metallic : hint_default_white, filter_linear_mipmap, repeat_enable;
+uniform vec4 metallic_texture_channel;
+uniform sampler2D texture_roughness : hint_roughness_r, filter_linear_mipmap, repeat_enable;
+
+uniform float specular : hint_range(0.0, 1.0, 0.01);
+uniform float metallic : hint_range(0.0, 1.0, 0.01);
+
+uniform sampler2D texture_normal : hint_roughness_normal, filter_linear_mipmap, repeat_enable;
+uniform float normal_scale : hint_range(-16.0, 16.0);
+
+uniform float rim : hint_range(0.0, 1.0, 0.01);
+uniform float rim_tint : hint_range(0.0, 1.0, 0.01);
+uniform sampler2D texture_rim : hint_default_white, filter_linear_mipmap, repeat_enable;
+
+uniform vec4 backlight : source_color;
+uniform sampler2D texture_backlight : hint_default_black, filter_linear_mipmap, repeat_enable;
+
+uniform vec3 uv1_scale;
+uniform vec3 uv1_offset;
+uniform vec3 uv2_scale;
+uniform vec3 uv2_offset;
+
+void vertex() {
+	UV = UV * uv1_scale.xy + uv1_offset.xy;
+}
+
+void fragment() {
+	vec2 base_uv = UV;
+	base_uv.x += sin(TIME * 1.0) / 500.0;
+	base_uv.y += sin(TIME * 2.0) / 250.0;
+	//base_uv.x = clamp(base_uv.x + sin(TIME / 100.0), 0.0, 1.0);
+
+	vec4 albedo_tex = texture(texture_albedo, base_uv);
+	vec4 albedo_two_tex = texture(texture_albedo_two, vec2(base_uv.y, base_uv.x));
+	ALBEDO = albedo.rgb * albedo_tex.rgb / albedo_two_tex.rgb;
+
+	float metallic_tex = dot(texture(texture_metallic, base_uv), metallic_texture_channel);
+	METALLIC = metallic_tex * metallic;
+	SPECULAR = specular;
+
+	vec4 roughness_texture_channel = vec4(1.0, 0.0, 0.0, 0.0);
+	float roughness_tex = dot(texture(texture_roughness, base_uv), roughness_texture_channel);
+	ROUGHNESS = roughness_tex * roughness;
+
+	// Normal Map: Enabled
+	NORMAL_MAP = texture(texture_normal, base_uv).rgb;
+	NORMAL_MAP_DEPTH = normal_scale;
+
+	// Rim: Enabled
+	vec2 rim_tex = texture(texture_rim, base_uv).xy;
+	RIM = rim * rim_tex.x;
+	RIM_TINT = rim_tint * rim_tex.y;
+
+	// Backlight: Enabled
+	vec3 backlight_tex = texture(texture_backlight, base_uv).rgb;
+	BACKLIGHT = (backlight.rgb + backlight_tex);
+}
+"
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_mntv1"]
+frequency = 0.0419
+offset = Vector3(0, 0, 1000)
+fractal_gain = 1.31
+fractal_weighted_strength = 0.78
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_ibykj"]
+width = 2000
+height = 2000
+seamless = true
+noise = SubResource("FastNoiseLite_mntv1")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_g8rs0"]
+frequency = 0.035
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_u58pc"]
+width = 2000
+height = 2000
+noise = SubResource("FastNoiseLite_g8rs0")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_6nxru"]
+noise_type = 5
+frequency = 0.0988
+fractal_lacunarity = 2.165
+fractal_gain = 1.005
+fractal_weighted_strength = 1.0
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_i3j20"]
+width = 1000
+height = 1000
+in_3d_space = true
+as_normal_map = true
+noise = SubResource("FastNoiseLite_6nxru")
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_u58pc"]
+render_priority = 0
+shader = SubResource("Shader_g8rs0")
+shader_parameter/albedo = Color(1, 0, 0, 1)
+shader_parameter/texture_albedo = SubResource("NoiseTexture2D_ibykj")
+shader_parameter/texture_albedo_two = SubResource("NoiseTexture2D_u58pc")
+shader_parameter/albedo_texture_size = Vector2i(2000, 2000)
+shader_parameter/point_size = 1.0
+shader_parameter/roughness = 0.82
+shader_parameter/metallic_texture_channel = Vector4(1, 0, 0, 0)
+shader_parameter/specular = 0.12
+shader_parameter/metallic = 0.41
+shader_parameter/texture_normal = SubResource("NoiseTexture2D_i3j20")
+shader_parameter/normal_scale = 1.89
+shader_parameter/rim = 1.0
+shader_parameter/rim_tint = 0.5
+shader_parameter/backlight = Color(1, 0, 0, 1)
+shader_parameter/uv1_scale = Vector3(1, 1, 1)
+shader_parameter/uv1_offset = Vector3(0, 0, 0)
+shader_parameter/uv2_scale = Vector3(1, 1, 1)
+shader_parameter/uv2_offset = Vector3(0, 0, 0)
+
+[sub_resource type="PlaneMesh" id="PlaneMesh_u58pc"]
+size = Vector2(16, 9)
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_s84ti"]
+frequency = 0.035
+fractal_weighted_strength = 0.68
+domain_warp_enabled = true
+domain_warp_type = 2
+domain_warp_amplitude = 24.47
+domain_warp_frequency = 0.03
+domain_warp_fractal_lacunarity = 3.1
+domain_warp_fractal_gain = 0.81
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cyxo0"]
+width = 1024
+noise = SubResource("FastNoiseLite_s84ti")
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_s84ti"]
+width = 1024
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_qrxiy"]
+noise_type = 4
+frequency = 0.0787
+fractal_gain = 0.57
+fractal_weighted_strength = 0.37
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_vhdlh"]
+width = 1024
+as_normal_map = true
+bump_strength = 13.2
+normalize = false
+noise = SubResource("FastNoiseLite_qrxiy")
+
+[sub_resource type="FastNoiseLite" id="FastNoiseLite_u58pc"]
+frequency = 0.035
+
+[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_qrxiy"]
+noise = SubResource("FastNoiseLite_u58pc")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hus12"]
+transparency = 1
+cull_mode = 2
+albedo_color = Color(0, 0.309804, 0.466667, 0.447059)
+albedo_texture = SubResource("NoiseTexture2D_cyxo0")
+metallic = 0.85
+metallic_specular = 0.22
+roughness = 0.4
+emission = Color(0.252028, 0.252028, 0.252028, 1)
+normal_enabled = true
+normal_texture = SubResource("NoiseTexture2D_vhdlh")
+clearcoat = 0.18
+clearcoat_roughness = 0.13
+anisotropy = 0.61
+anisotropy_flowmap = SubResource("NoiseTexture2D_s84ti")
+heightmap_scale = 4.96
+subsurf_scatter_strength = 0.65
+subsurf_scatter_skin_mode = true
+backlight = Color(0.70978, 0.80655, 1, 1)
+refraction_enabled = true
+refraction_scale = 0.09
+refraction_texture = SubResource("NoiseTexture2D_qrxiy")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_ibykj"]
+radius = 0.4
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_ibykj"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_g8rs0"]
+sky_top_color = Color(0.117397, 0.00988625, 7.21961e-08, 1)
+sky_horizon_color = Color(0.505882, 0.117647, 0, 1)
+sky_curve = 0.109806
+ground_bottom_color = Color(0, 0, 0, 1)
+ground_horizon_color = Color(0.504086, 0.11684, 0, 1)
+ground_curve = 0.011892
+energy_multiplier = 96.76
+
+[sub_resource type="Sky" id="Sky_ibykj"]
+sky_material = SubResource("ProceduralSkyMaterial_g8rs0")
+
+[sub_resource type="Environment" id="Environment_g8rs0"]
+background_mode = 2
+sky = SubResource("Sky_ibykj")
+tonemap_mode = 4
+volumetric_fog_density = 0.6403
+volumetric_fog_emission = Color(0.856067, 0.856067, 0.856067, 1)
+volumetric_fog_emission_energy = 678.76
+volumetric_fog_gi_inject = 5.45
+volumetric_fog_anisotropy = 0.69
+volumetric_fog_length = 668.08
+
+[node name="FpsControllerDemo" type="Node3D"]
+
+[node name="World" type="Node3D" parent="."]
+
+[node name="CSGBox3D" type="CSGBox3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 12)
+material_override = SubResource("ShaderMaterial_u58pc")
+gi_mode = 2
+use_collision = true
+size = Vector3(32, 0.5, 56)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D7" type="CSGBox3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 12)
+material_override = ExtResource("1_ibykj")
+gi_mode = 2
+use_collision = true
+size = Vector3(32, 0.5, 56)
+
+[node name="CSGPolygon3D" type="CSGPolygon3D" parent="World/CSGBox3D7"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, 0.5, 0.5, 21.5)
+operation = 2
+polygon = PackedVector2Array(-2, -3.5, -2, 8.5, 9, 8.5, 4.5, -1.5)
+
+[node name="CSGPolygon3D2" type="CSGPolygon3D" parent="World/CSGBox3D7"]
+transform = Transform3D(1, 0, 0, 0, -4.37114e-08, 1, 0, -1, -4.37114e-08, -6.5, 0.5, 21.5)
+operation = 2
+polygon = PackedVector2Array(-5.25, -4, -6.25, 6.25, 2, 8, 1.75, -4)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 3.75, 12)
+use_collision = true
+size = Vector3(1, 8.5, 56)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D3" type="CSGBox3D" parent="World"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.5, 3.75, 12)
+use_collision = true
+size = Vector3(1, 8.5, 56)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D4" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 3.75, -16.5)
+use_collision = true
+size = Vector3(1, 8.5, 32)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D5" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 3.75, 40.5)
+use_collision = true
+size = Vector3(1, 8.5, 32)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D6" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -11.5, 8, -11.5)
+use_collision = true
+size = Vector3(6, 16, 6)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.04904e-05, 4, 3)
+operation = 2
+size = Vector3(5, 7, 1)
+
+[node name="CSGBox3D3" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -3.00001, 4, -5.72205e-06)
+operation = 2
+size = Vector3(5, 7, 1)
+
+[node name="CSGBox3D5" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -8.58307e-06, 4.25, -1.33514e-05)
+operation = 2
+size = Vector3(4, 4.5, 7)
+
+[node name="CSGBox3D6" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(1, 0, -1.39091e-08, 0, 1, 0, 1.39091e-08, 0, 1, -8.58307e-06, 4.25, -1.33514e-05)
+operation = 2
+size = Vector3(4, 4.5, 7)
+
+[node name="CSGBox3D4" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(-4.37114e-08, 0, -1, 0, 1, 0, 1, 0, -4.37114e-08, -3.00001, -4, -6.67572e-06)
+operation = 2
+size = Vector3(5, 7, 1)
+
+[node name="CSGBox3D2" type="CSGBox3D" parent="World/CSGBox3D6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.14441e-05, -4, 3)
+operation = 2
+size = Vector3(5, 7, 1)
+
+[node name="CSGBox3D27" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3.25, 7.90918, -11.5)
+use_collision = true
+size = Vector3(6, 0.5, 10.5)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D30" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -6.25, 2.40918, -11.5)
+use_collision = true
+size = Vector3(6, 0.5, 4.5)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D31" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -2, 2.90918, -11.5)
+use_collision = true
+size = Vector3(6, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D32" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 3.40918, -11.5)
+use_collision = true
+size = Vector3(6, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D34" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.90918, 8.5)
+use_collision = true
+size = Vector3(6, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D35" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.65918, 5.25)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D36" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.40918, 4.75)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D37" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.15918, 4.25)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D38" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.90918, 3.75)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D39" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.65918, 3.25)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D40" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.40918, 2.75)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D41" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.15918, 2.25)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D42" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.90918, 1.75)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D43" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.65918, 1.25)
+use_collision = true
+size = Vector3(0.5, 0.5, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D44" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.53418, 0.75)
+use_collision = true
+size = Vector3(0.5, 0.25, 4)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D28" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3, 7.90918, 13)
+use_collision = true
+size = Vector3(6, 0.5, 6)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D30" type="CSGBox3D" parent="World/CSGBox3D28"]
+transform = Transform3D(-3.83684e-08, -0.47909, 0.877766, -2.09417e-08, 0.877766, 0.47909, -1, -5.32907e-15, -4.37114e-08, -10.3593, -4.05177, -0.0110207)
+use_collision = true
+size = Vector3(3, 0.5, 17)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D29" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3, 4, 0.25)
+use_collision = true
+size = Vector3(5.5, 8, 6)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D33" type="CSGBox3D" parent="World"]
+transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11, 2, 3)
+use_collision = true
+size = Vector3(17, 3, 10)
+material = ExtResource("1_ibykj")
+
+[node name="CSGBox3D34" type="CSGBox3D" parent="World/CSGBox3D33"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 0)
+operation = 2
+use_collision = true
+size = Vector3(16, 3, 9)
+material = ExtResource("1_ibykj")
+
+[node name="water" type="MeshInstance3D" parent="World/CSGBox3D33"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+mesh = SubResource("PlaneMesh_u58pc")
+surface_material_override/0 = SubResource("StandardMaterial3D_hus12")
+
+[node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("arm", "held_weapon")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 9.5, 0)
+disable_mode = 2
+collision_layer = 2
+floor_snap_length = 1.0
+script = ExtResource("1_mntv1")
+arm = NodePath("Head/ARm")
+held_weapon = NodePath("Head/ARm/Hand/gun")
+
+[node name="Control" type="Node2D" parent="Player" node_paths=PackedStringArray("fps_controller")]
+script = ExtResource("3_g8rs0")
+fps_controller = NodePath("..")
+
+[node name="Label" type="Label" parent="Player/Control"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 897.0
+offset_top = 69.0
+offset_right = 984.0
+offset_bottom = 92.0
+grow_horizontal = 2
+grow_vertical = 2
+text = "FPS: "
+
+[node name="Head" type="Node3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
+[node name="ARm" type="Node3D" parent="Player/Head"]
+physics_interpolation_mode = 1
+
+[node name="Hand" type="Node3D" parent="Player/Head/ARm"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.065, -0.085, 0.02)
+
+[node name="gun" parent="Player/Head/ARm/Hand" instance=ExtResource("2_u58pc")]
+physics_interpolation_mode = 1
+fire_rate = 0.15
+
+[node name="SpotLight3D" type="SpotLight3D" parent="Player/Head/ARm/Hand/gun"]
+transform = Transform3D(1, 0, 0, 0, 0.999816, 0.0191974, 0, -0.0191974, 0.999816, 0.2, -0.102707, -0.480974)
+light_energy = 10.399
+shadow_enabled = true
+spot_range = 22.36
+spot_angle = 18.694
+
+[node name="Camera3D" type="Camera3D" parent="Player/Head"]
+
+[node name="CeilingDetector" type="ShapeCast3D" parent="Player/Head"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17129, 0)
+shape = SubResource("SphereShape3D_ibykj")
+target_position = Vector3(0, 0, 0)
+
+[node name="Body" type="CollisionShape3D" parent="Player"]
+shape = SubResource("CapsuleShape3D_ibykj")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_g8rs0")
+
+[node name="lights" type="Node3D" parent="."]
+
+[node name="SpotLight3D" type="SpotLight3D" parent="lights"]
+transform = Transform3D(-0.565759, 0.032099, -0.823945, -0.121454, -0.991587, 0.0447663, -0.815577, 0.125399, 0.564898, -5.2478, 3.0925, 14.9735)
+light_color = Color(0.371049, 0.644345, 1, 1)
+light_energy = 2.79
+light_indirect_energy = 6.706
+light_size = 0.203
+light_specular = 1.507
+light_bake_mode = 1
+shadow_enabled = true
+spot_range = 132.5
+spot_attenuation = -0.44
+spot_angle = 31.68
+spot_angle_attenuation = 0.554785
+
+[node name="SpotLight3D3" type="SpotLight3D" parent="lights"]
+transform = Transform3D(0.965926, 0.0669873, 0.25, -0.258819, 0.25, 0.933013, -9.98188e-10, -0.965926, 0.258819, 6.0022, 22.3425, 35.9735)
+light_color = Color(0.686483, 0, 0.159742, 1)
+light_energy = 1.56
+light_size = 0.203
+light_specular = 1.507
+light_bake_mode = 1
+shadow_enabled = true
+spot_range = 139.0
+spot_attenuation = -0.44
+spot_angle = 31.68
+spot_angle_attenuation = 0.554785
+
+[node name="SpotLight3D2" type="SpotLight3D" parent="lights"]
+transform = Transform3D(-0.815577, 0.125399, 0.564898, 0.177697, -0.874789, 0.450742, 0.550689, 0.467995, 0.691174, 9.2522, 11.8425, 13.9735)
+light_color = Color(1.92523e-06, 0.459713, 0.664434, 1)
+light_energy = 16.0
+light_bake_mode = 1
+shadow_enabled = true
+spot_range = 45.0
+spot_attenuation = 0.4
+spot_angle = 56.8556
+spot_angle_attenuation = 0.594604

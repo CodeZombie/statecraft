@@ -16,7 +16,7 @@ func _init(suite_name_: String) -> void:
 	self.suite_name = suite_name_
 	for method in self.get_method_list():
 		if method['name'].begins_with("test_"):
-			self.preflight()
+			self.setup()
 			self.call(method['name'])
 			print("[PASSED] : {class_name}.{test_name}".format({
 				'class_name': self.suite_name,
@@ -29,7 +29,7 @@ func _init(suite_name_: String) -> void:
 	
 	#self.print_report()
 
-func preflight():
+func setup():
 	pass
 
 #func print_report():
