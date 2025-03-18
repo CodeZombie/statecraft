@@ -3,7 +3,7 @@
 [ext_resource type="Material" uid="uid://b5s14mpj5gowu" path="res://demo/assets/materials/noise_material.tres" id="1_ibykj"]
 [ext_resource type="Script" uid="uid://2quensr3kj81" path="res://demo/fps_demo/fps_controller.gd" id="1_mntv1"]
 [ext_resource type="PackedScene" uid="uid://vxmpekohjt3g" path="res://demo/fps_demo/gun.tscn" id="2_u58pc"]
-[ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/state_vis.gd" id="3_g8rs0"]
+[ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/fps_demo/state_vis.gd" id="3_g8rs0"]
 
 [sub_resource type="Shader" id="Shader_g8rs0"]
 code = "// NOTE: Shader automatically converted from Godot Engine 4.4.stable's StandardMaterial3D.
@@ -438,30 +438,20 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 mesh = SubResource("PlaneMesh_u58pc")
 surface_material_override/0 = SubResource("StandardMaterial3D_hus12")
 
-[node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("arm", "held_weapon")]
+[node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("held_weapon")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 9.5, 0)
 disable_mode = 2
 collision_layer = 2
 floor_snap_length = 1.0
 script = ExtResource("1_mntv1")
-arm = NodePath("Head/ARm")
 held_weapon = NodePath("Head/ARm/Hand/gun")
 
-[node name="Control" type="Node2D" parent="Player" node_paths=PackedStringArray("fps_controller")]
+[node name="fps_controller_vis" type="Node2D" parent="Player"]
 script = ExtResource("3_g8rs0")
-fps_controller = NodePath("..")
 
-[node name="Label" type="Label" parent="Player/Control"]
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 897.0
-offset_top = 69.0
-offset_right = 984.0
-offset_bottom = 92.0
-grow_horizontal = 2
-grow_vertical = 2
-text = "FPS: "
+[node name="gun_controller_vis" type="Node2D" parent="Player"]
+position = Vector2(161, 0)
+script = ExtResource("3_g8rs0")
 
 [node name="Head" type="Node3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
@@ -482,6 +472,10 @@ light_energy = 10.399
 shadow_enabled = true
 spot_range = 22.36
 spot_angle = 18.694
+
+[node name="gun_controller_vis" type="Node2D" parent="Player/Head/ARm/Hand/gun"]
+position = Vector2(321, 1)
+script = ExtResource("3_g8rs0")
 
 [node name="Camera3D" type="Camera3D" parent="Player/Head"]
 

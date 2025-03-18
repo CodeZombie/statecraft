@@ -1,7 +1,6 @@
 extends CharacterBody3D
 
-@export var arm: Node3D
-@export var held_weapon: LowPolyVal
+@export var held_weapon: Gun
 
 @export_group("Ground Movement")
 @export var walk_speed: float = 6.0
@@ -14,13 +13,9 @@ extends CharacterBody3D
 
 @export_group("Air Movement")
 @export var jump_velocity: float = 5.5
-@export var air_cap := 0.85 # Can surf steeper ramps if this is higher, makes it easier to stick and bhop
-@export var air_accel := 800.0
-@export var air_move_speed := 500.0
 @export var air_move_cancel_factor := 3.5
 @export var min_air_speed: float = 1.0
 @export var air_deceleration: float = 12.0
-@export var walljump_force: float = 12.0
 
 @export_group("Height")
 @export var standing_height: float = 2.0
@@ -33,6 +28,7 @@ extends CharacterBody3D
 @export var mouse_sensitivity: float = 0.1
 
 @export_group("Animation")
+# Not implemented yet
 @export var crouch_curve: Curve
 @export var jump_takeoff_curve: Curve
 @export var ground_impact_curve: Curve
@@ -51,15 +47,16 @@ extends CharacterBody3D
 var _height: float = self.standing_height
 var _mouse_input: Vector2 = Vector2.ZERO
 var _camera_fov: float = self.normal_camera_fov
-var wish_dir: Vector3 = Vector3.ZERO
+var _desired_direction: Vector3 = Vector3.ZERO
 
-@onready var body_shape: Shape3D = $Body.shape
+@onready var _body_shape: Shape3D = $Body.shape
 
 var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
-	.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
-	.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
 	.add_process_event(func(delta: float):
 		$Head/Camera3D.fov = lerp($Head/Camera3D.fov, self._camera_fov, 8.0 * delta) )\
+		
+	.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
+	.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
 		
 	.add(State.new("normal", false)
 		.add_enter_event(func(): self._camera_fov = self.normal_camera_fov) )\
@@ -68,11 +65,17 @@ var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
 		.add_enter_event(func(): self._camera_fov = self.zoom_camera_fov))
 
 var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
+	# If we're crouching while jumping and we hit the ground, transition to the on_ground/crouching state.
 	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).then_transition_to(^"on_ground/crouching")\
+	# If we're standing upright while in the air and we hit the ground, transition to the on_ground/standing state.
 	.from(^"in_the_air/stance/airstand").if_true(self.is_on_floor).then_transition_to(^"on_ground/standing")\
-	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).and_if_true(func(): return self.real_speed() > 4.0).then_transition_to(^"on_ground/crouching/sliding")\
+	# If we're crouching while we hit the ground and we're going fast enough, start sliding
+	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).and_if_true(self.is_sprinting).then_transition_to(^"on_ground/crouching/sliding")\
+	# If we were standing on the ground and now we're in the air, transition to air standing state.
 	.from(^"on_ground/standing").if_false(self.is_on_floor).then_transition_to(^"in_the_air/stance/airstand")\
+	# if we were regular crouchingg while on the ground and now we're not on the ground, transition to air crouch,
 	.from(^"on_ground/crouching/idle").if_false(self.is_on_floor).then_transition_to(^"in_the_air/stance/aircrouch")\
+	# If we were sliding on the ground and now we're in the air, transition to the aircrouch/glide state.
 	.from(^"on_ground/crouching/sliding").if_false(self.is_on_floor).then_transition_to(^"in_the_air/stance/aircrouch/glide")\
 
 	.add(StateMachine.new(^"on_ground")\
@@ -81,10 +84,9 @@ var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 
 		.add(StateMachine.new(^"standing")
 			.add_enter_event(self.set_standing_height)
-			
+			.if_true(self.is_hitting_head).then_transition_to(^"hitting_head")
 			.from(^"walking").if_true(self.wants_to_run).then_transition_to(^"running")
 			.from(^"running").if_false(self.wants_to_run).then_transition_to(^"walking")
-			.if_true(self.is_hitting_head).then_transition_to(^"hitting_head")
 			.from(^"hitting_head").if_false(self.is_hitting_head).then_transition_to(^"walking")
 
 			.add(State.new(^"walking", false)
@@ -98,11 +100,11 @@ var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 			)
 			
 			.add(State.new(^"hitting_head", false)
+				.add_enter_event(func(): self._height = self._body_shape.height)
 				.add_process_event(self.process_move_on_ground.bind(self.crouch_speed))
-				.add_enter_event(func(): self._height = self.body_shape.height)
-				.add_exit_event(self.set_standing_height)
 				.add_process_event(func(delta: float):
 					if self.is_on_ceiling(): self._height -= 0.05)
+				.add_exit_event(self.set_standing_height)
 			))
 
 		.add(StateMachine.new(^"crouching")
@@ -133,6 +135,7 @@ var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 
 			.add(StateMachine.new(^"aircrouch")
 				.add_enter_event(self.set_crouching_height)
+				
 				.add(State.new(^"idle", false)
 					.add_process_event(self.process_move_in_air) )
 					
@@ -146,8 +149,8 @@ var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 			.from(^"coyote_timer").on_signal(^"coyote_timer:exited").then_transition_to(^"freefall")
 
 			.add(State.new(^"coyote_timer", false)
-				.if_true(self.wants_to_jump).then_call(self.jump) # Despite there being two `self.wants_to_jump` checks, only one will be executed.
-				.if_true(self.wants_to_jump).then_exit() # Despite `exit()` coming after `execute()`, they will both be guaranteed to execute.
+				.if_true(self.wants_to_jump).then_call(self.jump)
+				.if_true(self.wants_to_jump).then_exit()
 				.on_timer(0.25).then_exit())
 
 			.add(StateMachine.new(^"freefall")
@@ -167,6 +170,9 @@ func _ready() -> void:
 	# Capture mouse movement.
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	
+	$fps_controller_vis.state_machine = self.fps_fsm
+	$gun_controller_vis.state_machine = self.camera_zoom_fsm
+	
 	self.held_weapon.walk_animation_condition = self.is_walking
 	self.held_weapon.run_animation_condition = self.is_sprinting
 
@@ -175,25 +181,15 @@ func _physics_process(delta: float) -> void:
 	# Apply gravity
 	self.velocity.y -= ProjectSettings.get_setting(&"physics/3d/default_gravity") * delta
 	
-	
-	# update the FSM
+	# update the State Mahcines
 	self.fps_fsm.run(delta)
 	self.camera_zoom_fsm.run(delta)
-	
-	# Debug text
-	$Control/Label.text = "FPS: " + str(Engine.get_frames_per_second())
-	$Control/Label.text += "\nCeiling Detector Colliding? " + str($Head/CeilingDetector.is_colliding())
-	$Control/Label.text += "\n Target Height: " + str(self._height)
-	$Control/Label.text += "\n Real Height: " + str(self.body_shape.height)
-	$Control/Label.text += "\n real_speed: " + str(self.real_speed())
 	
 	# Apply basic movement physics
 	self.move_and_slide()
 	
-
-	
 	# Apply crouching/standing height interpolation
-	self.body_shape.height = move_toward(self.body_shape.height, self._height, max(0.05, self.crouch_height_speed * delta))
+	self._body_shape.height = move_toward(self._body_shape.height, self._height, max(0.05, self.crouch_height_speed * delta))
 
 func _process(delta: float) -> void:
 	# Apply mouselook
@@ -204,12 +200,11 @@ func _process(delta: float) -> void:
 	
 	# Update the direction the player wants to move in.
 	var input_dir: Vector2 = Input.get_vector(controls.LEFT, controls.RIGHT, controls.FORWARD, controls.BACKWARD).normalized()
-	self.wish_dir = self.global_transform.basis * Vector3(input_dir.x, 0, input_dir.y)
+	self._desired_direction = self.global_transform.basis * Vector3(input_dir.x, 0, input_dir.y)
 	
-	
+	# Pass events to the held weapon object:
 	if Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		self.held_weapon.squeeze_trigger()
-		
 	if Input.is_key_pressed(KEY_R):
 		self.held_weapon.reload()
 	
@@ -243,7 +238,7 @@ func is_jumping() -> bool:
 	return self.velocity.y > 0
 
 func is_crouching() -> bool:
-	return self.body_shape.height == self.crouching_height
+	return self._body_shape.height == self.crouching_height
 
 func wants_to_zoom() -> bool:
 	return Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
@@ -299,12 +294,12 @@ func process_move_on_ground(delta: float, speed: float) -> void:
 	#self.velocity.z = lerp(velocity.z, direction.z * self._speed, acceleration * delta)
 
 	# Similar to the air movement. Acceleration and friction on ground.
-	var cur_speed_in_wish_dir = self.velocity.dot(self.wish_dir)
-	var add_speed_till_cap = speed - cur_speed_in_wish_dir
+	var cur_speed_in_desired_direction = self.velocity.dot(self._desired_direction)
+	var add_speed_till_cap = speed - cur_speed_in_desired_direction
 	if add_speed_till_cap > 0:
 		var accel_speed = self.ground_accel * delta * self.run_speed
 		accel_speed = min(accel_speed, add_speed_till_cap)
-		self.velocity += accel_speed * self.wish_dir
+		self.velocity += accel_speed * self._desired_direction
 	
 	# Apply friction
 	var control = max(self.velocity.length(), self.ground_decel)
@@ -315,12 +310,12 @@ func process_move_on_ground(delta: float, speed: float) -> void:
 	self.velocity *= new_speed
 		
 func process_move_in_air(delta: float) -> void:
-	if wish_dir.length() > 0:
+	if self._desired_direction.length() > 0:
 		var current_velocity_y = self.velocity.y
 		var movement_speed: float = max(self.min_air_speed, Vector2(self.velocity.x, self.velocity.z).length())
-		var wish_dir_with_speed: Vector3 = self.wish_dir * movement_speed
-		wish_dir_with_speed.y = current_velocity_y
-		self.velocity = self.velocity.move_toward(wish_dir_with_speed, self.air_deceleration * delta)
+		var desired_direction_with_speed: Vector3 = self._desired_direction * movement_speed
+		desired_direction_with_speed.y = current_velocity_y
+		self.velocity = self.velocity.move_toward(desired_direction_with_speed, self.air_deceleration * delta)
 
 func process_sliding(delta: float) -> void:
 	var slide_velocity: Vector2 = Vector2(velocity.x, velocity.z).normalized() * (self.real_speed() - (self.slide_friction * delta))
@@ -328,7 +323,8 @@ func process_sliding(delta: float) -> void:
 	self.velocity.z = slide_velocity.y #lerp(velocity.z, slide_velocity.y, 1.0 * delta)
 
 func process_sliding_in_air(delta: float) -> void:
-	var desire_to_go_backwards: float = -self.velocity.normalized().dot(wish_dir.normalized())
+	# Similar to `process_move_in_air` but doesnt allow you to change direction in the air, only slow down/stop.
+	var desire_to_go_backwards: float = -self.velocity.normalized().dot(self._desired_direction.normalized())
 	if desire_to_go_backwards > 0:
 		self.velocity.x *= 1 - (desire_to_go_backwards * self.air_move_cancel_factor * delta)
 		self.velocity.z *= 1 - (desire_to_go_backwards * self.air_move_cancel_factor * delta)

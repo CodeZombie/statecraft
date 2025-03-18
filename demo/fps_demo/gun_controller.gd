@@ -1,4 +1,4 @@
-class_name LowPolyVal extends Node3D
+class_name Gun extends Node3D
 
 signal shoot_signal
 signal reload_signal
@@ -88,6 +88,9 @@ var muzzle_flash_fsm: StateMachine = StateMachine.new("muzzle_flash_controller")
 		.add_enter_event(func():$muzzle_flash.visible = true)
 		.on_timer(0.1).then_exit() )
 	
+func _ready() -> void:
+	$gun_controller_vis.state_machine = self.gun_fsm	
+
 func play_animation(animation_name: StringName) -> void:
 	$AnimationPlayer.play(animation_name)
 	
