@@ -1,5 +1,8 @@
 extends CharacterBody3D
 
+var speed_scale: float = 1.0
+var _desired_speed_scale: float = speed_scale
+
 @export var held_weapon: Gun
 
 @export_group("Ground Movement")
@@ -53,18 +56,25 @@ var _desired_direction: Vector3 = Vector3.ZERO
 
 var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
 	.add_process_event(func(delta: float):
-		$Head/Camera3D.fov = lerp($Head/Camera3D.fov, self._camera_fov, 8.0 * delta) )\
+		$Head/Camera3D.fov = lerp($Head/Camera3D.fov, self._camera_fov, 8.0 * delta) 
+		self.speed_scale = lerp(self.speed_scale, self._desired_speed_scale, 12 * delta)
+		)\
 		
 	.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
 	.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
 		
 	.add(State.new("normal", false)
-		.add_enter_event(func(): self._camera_fov = self.normal_camera_fov) )\
+		.add_enter_event(func(): 
+			self._desired_speed_scale = 1.0
+			self._camera_fov = self.normal_camera_fov) )\
 	
 	.add(State.new("zoom", false)
-		.add_enter_event(func(): self._camera_fov = self.zoom_camera_fov))
+		.add_enter_event(func(): 
+			self._desired_speed_scale = 0.2
+			self._camera_fov = self.zoom_camera_fov))
 
 var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
+	.add_process_event(self.global_physics_process)\
 	# If we're crouching while jumping and we hit the ground, transition to the on_ground/crouching state.
 	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).then_transition_to(^"on_ground/crouching")\
 	# If we're standing upright while in the air and we hit the ground, transition to the on_ground/standing state.
@@ -175,23 +185,32 @@ func _ready() -> void:
 	
 	self.held_weapon.walk_animation_condition = self.is_walking
 	self.held_weapon.run_animation_condition = self.is_sprinting
+	self.held_weapon.get_speed_scale_method = self.get_speed_scale
 
 func _physics_process(delta: float) -> void:
+		# update the State Mahcines
+	self.fps_fsm.run(delta, self.speed_scale)
+	self.camera_zoom_fsm.run(delta, self.speed_scale)
+	
+func global_physics_process(delta: float) -> void:
 	
 	# Apply gravity
 	self.velocity.y -= ProjectSettings.get_setting(&"physics/3d/default_gravity") * delta
 	
-	# update the State Mahcines
-	self.fps_fsm.run(delta)
-	self.camera_zoom_fsm.run(delta)
 	
-	# Apply basic movement physics
+		# Apply basic movement physics
+	var old_velocity = self.velocity
+	self.velocity *= 60 * delta
 	self.move_and_slide()
+	self.velocity = old_velocity
+
+
 	
 	# Apply crouching/standing height interpolation
 	self._body_shape.height = move_toward(self._body_shape.height, self._height, max(0.05, self.crouch_height_speed * delta))
 
 func _process(delta: float) -> void:
+	
 	# Apply mouselook
 	self.rotation_degrees.y -= self._mouse_input.x * self.mouse_sensitivity
 	$Head.rotation_degrees.x -= self._mouse_input.y * self.mouse_sensitivity
@@ -253,6 +272,9 @@ func is_walking() -> bool:
 
 func real_speed() -> float:
 	return Vector2(self.velocity.x, self.velocity.z).length()
+
+func get_speed_scale() -> float:
+	return self.speed_scale
 
 ## Actions
 

@@ -12,6 +12,7 @@ var click_sound = preload("res://demo/assets/click.mp3")
 # They should hold methods that tell this gun whether the oject holding it is running or walking.
 var walk_animation_condition: Callable
 var run_animation_condition: Callable
+var get_speed_scale_method: Callable
 
 var mag_capacity: int = 12
 var rounds_in_mag: int = self.mag_capacity
@@ -95,8 +96,10 @@ func play_animation(animation_name: StringName) -> void:
 	$AnimationPlayer.play(animation_name)
 	
 func _process(delta: float) -> void:
-	gun_fsm.run(delta)
-	muzzle_flash_fsm.run(delta)
+	gun_fsm.run(delta, self.get_speed_scale_method.call())
+	muzzle_flash_fsm.run(delta, self.get_speed_scale_method.call())
+	self.animation_player.speed_scale = self.get_speed_scale_method.call()
+	self.audio_player.pitch_scale = self.get_speed_scale_method.call()
 	
 ### Conditions:
 func should_play_walk_animation() -> bool:

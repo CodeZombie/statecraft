@@ -195,7 +195,7 @@ func process(delta: float, speed_scale: float = 1) -> bool:
 				callback.call()
 
 	for timer_duration in self._timers.keys():
-		self._timers[timer_duration].process(timer_duration, delta)
+		self._timers[timer_duration].process(timer_duration, delta * speed_scale)
 		
 	if self.status != StateStatus.RUNNING:
 		return true
