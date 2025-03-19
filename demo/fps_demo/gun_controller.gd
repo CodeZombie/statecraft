@@ -3,6 +3,9 @@ class_name Gun extends Node3D
 signal shoot_signal
 signal reload_signal
 signal trigger_muzzle_flash
+signal trigger_bullet_spawn
+
+const BULLET = preload("res://demo/fps_demo/bullet.tscn")
 
 var gunshot_sound = preload("res://demo/assets/gunshot.mp3")
 var reload_sound = preload("res://demo/assets/reload.mp3")
@@ -17,10 +20,17 @@ var get_speed_scale_method: Callable
 var mag_capacity: int = 12
 var rounds_in_mag: int = self.mag_capacity
 
-@export var fire_rate: float = 0.1
+var active_bullets: Array[Object] = []
 
+@export var fire_rate: float = 0.1
+@export var muzzle_velocity: float = 280.0
+
+@export var root: Node3D
 @export var animation_player: AnimationPlayer
 @export var audio_player: AudioStreamPlayer3D
+@export var bullet_impulse_origin: Marker3D
+@export var bullet_spawn_marker: Marker3D
+
 
 @onready var gun_fsm: StateMachine = StateMachine.new(^"gun_fsm")\
 	.from(^"idle").on_signal(self.shoot_signal).and_if_false(self.gun_is_empty).then_transition_to(^"shoot")\
@@ -57,7 +67,8 @@ var rounds_in_mag: int = self.mag_capacity
 			self.play_animation(&"LVA4_Armature|wpn_val_shoot")
 			self.rounds_in_mag -= 1
 			self.play_sound(self.gunshot_sound)
-			self.trigger_muzzle_flash.emit()))\
+			self.trigger_muzzle_flash.emit()
+			self.trigger_bullet_spawn.emit()))\
 
 	.add(State.new(^"empty_fire", false)
 		.add_enter_event(func(): self.play_sound(self.click_sound))
@@ -88,7 +99,25 @@ var muzzle_flash_fsm: StateMachine = StateMachine.new("muzzle_flash_controller")
 	.add(State.new("flash", false)
 		.add_enter_event(func():$muzzle_flash.visible = true)
 		.on_timer(0.1).then_exit() )
+
+var bullet_spawn_fsm: StateMachine = StateMachine.new("bullet_spawner")\
+	.from(^"idle").on_signal(self.trigger_bullet_spawn).then_transition_to(^"fire")\
+	.from(^"fire").on_signal(self.trigger_bullet_spawn).then_transition_to(^"fire")\
+	.from(^"fire").on_signal(^"fire:exited").then_transition_to(^"idle")\
 	
+	.add(State.new(^"idle", false)
+		.add_enter_event(func():))\
+	.add(State.new(^"fire", false)
+		.add_enter_event(func():
+			var bullet = BULLET.instantiate()
+			bullet.get_speed_scale_method = self.get_speed_scale_method
+			root.add_child(bullet)
+			bullet.global_transform.basis = bullet_spawn_marker.global_transform.basis
+			bullet.global_position = bullet_spawn_marker.global_position
+			var direction = (bullet_spawn_marker.global_position - bullet_impulse_origin.global_position).normalized()
+			bullet.velocity_vector = direction*muzzle_velocity)
+		.on_timer(1).then_exit() )
+
 func _ready() -> void:
 	$gun_controller_vis.state_machine = self.gun_fsm	
 
@@ -98,6 +127,7 @@ func play_animation(animation_name: StringName) -> void:
 func _process(delta: float) -> void:
 	gun_fsm.run(delta, self.get_speed_scale_method.call())
 	muzzle_flash_fsm.run(delta, self.get_speed_scale_method.call())
+	bullet_spawn_fsm.run(delta, self.get_speed_scale_method.call())
 	self.animation_player.speed_scale = self.get_speed_scale_method.call()
 	self.audio_player.pitch_scale = self.get_speed_scale_method.call()
 	

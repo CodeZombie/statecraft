@@ -53,6 +53,47 @@ var _camera_fov: float = self.normal_camera_fov
 var _desired_direction: Vector3 = Vector3.ZERO
 
 @onready var _body_shape: Shape3D = $Body.shape
+@onready var camera_3d: Camera3D = $Head/Camera3D
+@onready var arm: Node3D = $Head/ARm
+
+
+var sights_fsm: StateMachine = StateMachine.new(^"sights_fsm")\
+	.from(^"hipfire").if_true(self.wants_iron_sights).then_transition_to(^"aiming")\
+	.from(^"iron_sights").if_false(self.wants_iron_sights).then_transition_to(^"resting")\
+	.from(^"resting").on_signal(^"resting:exited").then_transition_to(^"hipfire")\
+	.from(^"aiming").on_signal(^"aiming:exited").then_transition_to(^"iron_sights")\
+	
+	.add(State.new(^"hipfire", false)
+		.add_enter_event(func():
+			camera_3d.position = Vector3.ZERO))\
+	
+	.add(State.new(^"iron_sights", false)
+		.add_enter_event(func():
+			camera_3d.position = Vector3(0.111, -0.021, 0.0)))\
+	
+	.add(StateQueue.new(^"resting")\
+		.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
+		
+		.add(TweenState.new(^"raise_head", self, func(tween: Tween): 
+			tween.tween_property(camera_3d, "position", Vector3.ZERO, 0.2)))
+
+		.add(TweenState.new(^"lower_gun", self, func(tween: Tween): 
+			tween.tween_property(arm, "position", Vector3.ZERO, 0.2)))
+
+		.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
+			tween.tween_property(arm, "rotation", Vector3.ZERO, 0.2))))\
+
+	.add(StateQueue.new(^"aiming")\
+		.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
+		
+		.add(TweenState.new(^"lower_head", self, func(tween: Tween): 
+			tween.tween_property(camera_3d, "position", Vector3(0.111, -0.021, 0.0), 0.2)))
+
+		.add(TweenState.new(^"raise_gun", self, func(tween: Tween): 
+			tween.tween_property(arm, "position", Vector3(0.004, 0.027, 0.0), 0.2)))
+			
+		.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
+			tween.tween_property(arm, "rotation_degrees", Vector3(-5.7, -3.0, -3.5), 0.2))))
 
 var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
 	.add_process_event(func(delta: float):
@@ -62,7 +103,7 @@ var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
 		
 	.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
 	.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
-		
+	
 	.add(State.new("normal", false)
 		.add_enter_event(func(): 
 			self._desired_speed_scale = 1.0
@@ -181,7 +222,9 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	
 	$fps_controller_vis.state_machine = self.fps_fsm
-	$gun_controller_vis.state_machine = self.camera_zoom_fsm
+	$zoom_controller_vis.state_machine = self.camera_zoom_fsm
+	$aiming_controller_vis.state_machine = self.sights_fsm
+
 	
 	self.held_weapon.walk_animation_condition = self.is_walking
 	self.held_weapon.run_animation_condition = self.is_sprinting
@@ -190,6 +233,7 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 		# update the State Mahcines
 	self.fps_fsm.run(delta, self.speed_scale)
+	self.sights_fsm.run(delta, self.speed_scale)
 	self.camera_zoom_fsm.run(delta, self.speed_scale)
 	
 func global_physics_process(delta: float) -> void:
@@ -260,6 +304,9 @@ func is_crouching() -> bool:
 	return self._body_shape.height == self.crouching_height
 
 func wants_to_zoom() -> bool:
+	return Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+
+func wants_iron_sights() -> bool:
 	return Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 
 func is_sprinting() -> bool:
