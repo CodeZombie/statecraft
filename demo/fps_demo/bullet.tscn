@@ -16,6 +16,7 @@ points = PackedVector3Array(-0.005, -0.0200029, 0, -0.00497651, -0.0200029, -0.0
 
 [node name="Bullet" type="RigidBody3D"]
 collision_layer = 4
+collision_mask = 9
 custom_integrator = true
 continuous_cd = true
 contact_monitor = true

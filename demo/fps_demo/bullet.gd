@@ -33,6 +33,10 @@ var contact_point: Vector3 = Vector3.ZERO
 			if contact is RigidBody3D:
 				contact.apply_impulse(
 					(velocity_vector/10)/contact.mass, 
+					contact.to_local(contact_point))
+			elif contact is PhysicalBone3D:
+				contact.apply_impulse(
+					(velocity_vector/20),
 					contact.to_local(contact_point)))
 		.on_timer(1.0).then_exit())\
 	

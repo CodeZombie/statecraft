@@ -1,10 +1,11 @@
-[gd_scene load_steps=39 format=3 uid="uid://n2voo0can5cp"]
+[gd_scene load_steps=40 format=3 uid="uid://n2voo0can5cp"]
 
 [ext_resource type="Material" uid="uid://b5s14mpj5gowu" path="res://demo/assets/materials/noise_material.tres" id="1_ibykj"]
 [ext_resource type="Script" uid="uid://2quensr3kj81" path="res://demo/fps_demo/fps_controller.gd" id="1_mntv1"]
 [ext_resource type="PackedScene" uid="uid://vxmpekohjt3g" path="res://demo/fps_demo/gun.tscn" id="2_u58pc"]
 [ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/fps_demo/state_vis.gd" id="3_g8rs0"]
 [ext_resource type="Script" uid="uid://cgardrpd3npst" path="res://demo/fps_demo/aiming_controller_vis.gd" id="4_xegy3"]
+[ext_resource type="PackedScene" uid="uid://cn1q3kx46r1nf" path="res://demo/fps_demo/npc.tscn" id="6_mh4n8"]
 
 [sub_resource type="Shader" id="Shader_g8rs0"]
 code = "// NOTE: Shader automatically converted from Godot Engine 4.4.stable's StandardMaterial3D.
@@ -268,7 +269,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.25, 12)
 material_override = SubResource("ShaderMaterial_u58pc")
 gi_mode = 2
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(32, 0.5, 56)
 material = ExtResource("1_ibykj")
 
@@ -277,7 +278,7 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.25, 12)
 material_override = ExtResource("1_ibykj")
 gi_mode = 2
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(32, 0.5, 56)
 
 [node name="CSGPolygon3D" type="CSGPolygon3D" parent="World/CSGBox3D7"]
@@ -293,7 +294,7 @@ polygon = PackedVector2Array(-5.25, -4, -6.25, 6.25, 2, 8, 1.75, -4)
 [node name="CSGBox3D2" type="CSGBox3D" parent="World"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 16.5, 3.75, 12)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(1, 8.5, 56)
 material = ExtResource("1_ibykj")
 
@@ -301,28 +302,28 @@ material = ExtResource("1_ibykj")
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -16.5, 3.75, 12)
 use_collision = true
 collision_layer = 5
-collision_mask = 5
+collision_mask = 13
 size = Vector3(1, 8.5, 56)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D4" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 3.75, -16.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(1, 8.5, 32)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D5" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 0, 3.75, 40.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(1, 8.5, 32)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D6" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -11.5, 8, -11.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 16, 6)
 material = ExtResource("1_ibykj")
 
@@ -359,112 +360,112 @@ size = Vector3(5, 7, 1)
 [node name="CSGBox3D27" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3.25, 7.90918, -11.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 10.5)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D30" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -6.25, 2.40918, -11.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 4.5)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D31" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -2, 2.90918, -11.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D32" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 2, 3.40918, -11.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D34" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.90918, 8.5)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D35" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.65918, 5.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D36" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.40918, 4.75)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D37" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 2.15918, 4.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D38" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.90918, 3.75)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D39" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.65918, 3.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D40" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.40918, 2.75)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D41" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 1.15918, 2.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D42" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.90918, 1.75)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D43" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.65918, 1.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.5, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D44" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 4, 0.53418, 0.75)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(0.5, 0.25, 4)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D28" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3, 7.90918, 13)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(6, 0.5, 6)
 material = ExtResource("1_ibykj")
 
@@ -477,14 +478,14 @@ material = ExtResource("1_ibykj")
 [node name="CSGBox3D29" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, -3, 4, 0.25)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(5.5, 8, 6)
 material = ExtResource("1_ibykj")
 
 [node name="CSGBox3D33" type="CSGBox3D" parent="World"]
 transform = Transform3D(-4.37114e-08, 0, 1, 0, 1, 0, -1, 0, -4.37114e-08, 11, 2, 3)
 use_collision = true
-collision_mask = 5
+collision_mask = 13
 size = Vector3(17, 3, 10)
 material = ExtResource("1_ibykj")
 
@@ -500,111 +501,128 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
 mesh = SubResource("PlaneMesh_u58pc")
 surface_material_override/0 = SubResource("StandardMaterial3D_hus12")
 
-[node name="TinyBox" type="RigidBody3D" parent="World"]
+[node name="Interactables" type="Node3D" parent="."]
+
+[node name="TinyBox" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.811794, 0.77896, 10.4789)
+collision_mask = 15
 mass = 3.5
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/TinyBox"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/TinyBox"]
 mesh = SubResource("BoxMesh_yocag")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/TinyBox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/TinyBox"]
 shape = SubResource("ConvexPolygonShape3D_buafm")
 
-[node name="SmallBox" type="RigidBody3D" parent="World"]
+[node name="SmallBox" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.97124, 1.08107, 10.6766)
+collision_mask = 15
 mass = 4.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/SmallBox"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/SmallBox"]
 mesh = SubResource("BoxMesh_a51gk")
-skeleton = NodePath("../..")
+skeleton = NodePath("../../../World")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/SmallBox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/SmallBox"]
 shape = SubResource("ConvexPolygonShape3D_xegy3")
 
-[node name="MedBox" type="RigidBody3D" parent="World"]
+[node name="MedBox" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5.68946, 1.5502, 10.4834)
+collision_mask = 15
 mass = 6.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/MedBox"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/MedBox"]
 mesh = SubResource("BoxMesh_xegy3")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/MedBox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/MedBox"]
 shape = SubResource("ConvexPolygonShape3D_mh4n8")
 
-[node name="LargeBox" type="RigidBody3D" parent="World"]
+[node name="LargeBox" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8.87065, 2.18563, 10.6321)
+collision_mask = 15
 mass = 8.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/LargeBox"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/LargeBox"]
 mesh = SubResource("BoxMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/LargeBox"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/LargeBox"]
 shape = SubResource("ConvexPolygonShape3D_yocag")
 
-[node name="Can" type="RigidBody3D" parent="World"]
+[node name="Can" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.9121, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
-[node name="Can2" type="RigidBody3D" parent="World"]
+[node name="Can2" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12.2325, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can2"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can2"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can2"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can2"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
-[node name="Can3" type="RigidBody3D" parent="World"]
+[node name="Can3" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.6315, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can3"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can3"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can3"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can3"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
-[node name="Can4" type="RigidBody3D" parent="World"]
+[node name="Can4" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -11.0432, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can4"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can4"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can4"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can4"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
-[node name="Can5" type="RigidBody3D" parent="World"]
+[node name="Can5" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10.465, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can5"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can5"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can5"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can5"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
-[node name="Can6" type="RigidBody3D" parent="World"]
+[node name="Can6" type="RigidBody3D" parent="Interactables"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -9.88236, 10.3048, -9.13087)
+collision_mask = 15
 mass = 3.0
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Interactables/Can6"]
 mesh = SubResource("CylinderMesh_mh4n8")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6"]
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Interactables/Can6"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="NPC" parent="." node_paths=PackedStringArray("head_target") instance=ExtResource("6_mh4n8")]
+transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, -2.24979, 0.522473, 5.84025)
+head_target = NodePath("../Player/Head")
 
 [node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("held_weapon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 9.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.85962, 1.58825, 9.01032)
 disable_mode = 2
 collision_layer = 2
+collision_mask = 11
 floor_snap_length = 1.0
 script = ExtResource("1_mntv1")
 held_weapon = NodePath("Head/ARm/Hand/gun")
@@ -625,7 +643,6 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 
 [node name="ARm" type="Node3D" parent="Player/Head"]
 physics_interpolation_mode = 1
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 
 [node name="Hand" type="Node3D" parent="Player/Head/ARm"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.065, -0.085, 0.02)
