@@ -117,7 +117,7 @@ var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
 var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 	.add_process_event(self.global_physics_process)\
 	# If we're crouching while jumping and we hit the ground, transition to the on_ground/crouching state.
-	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).then_transition_to(^"on_ground/crouching")\
+	.from(^"in_the_air/stance/aircrouch").if_true(self.is_on_floor).and_if_false(self.is_sprinting).then_transition_to(^"on_ground/crouching")\
 	# If we're standing upright while in the air and we hit the ground, transition to the on_ground/standing state.
 	.from(^"in_the_air/stance/airstand").if_true(self.is_on_floor).then_transition_to(^"on_ground/standing")\
 	# If we're crouching while we hit the ground and we're going fast enough, start sliding

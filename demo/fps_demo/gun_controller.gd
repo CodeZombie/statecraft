@@ -17,7 +17,7 @@ var walk_animation_condition: Callable
 var run_animation_condition: Callable
 var get_speed_scale_method: Callable
 
-var mag_capacity: int = 12
+var mag_capacity: int = 512
 var rounds_in_mag: int = self.mag_capacity
 
 var active_bullets: Array[Object] = []
