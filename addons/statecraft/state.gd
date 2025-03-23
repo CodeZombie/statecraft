@@ -165,15 +165,11 @@ func enter() -> bool:
 	self.props = {}
 	var custom_enter_method_return_value: bool = false
 	
-	# REset timers:
+	# Reset timers:
 	for timer in self._timers.values():
 		timer.reset()
 	
-	for condition_event in self.condition_events.keys():
-		if condition_event.call():
-			for callback in self.condition_events[condition_event]:
-				callback.call()
-	
+	# run Enter events
 	for enter_method in self.enter_events:
 		#if is_method_still_bound(enter_method):
 		if enter_method.get_argument_count() > 0:
@@ -182,6 +178,12 @@ func enter() -> bool:
 		else:
 			if enter_method.call():
 				custom_enter_method_return_value = true
+				
+	for condition_event in self.condition_events.keys():
+		if condition_event.call():
+			for callback in self.condition_events[condition_event]:
+				callback.call()
+				
 	self.entered.emit()
 	return custom_enter_method_return_value
 
@@ -192,9 +194,13 @@ func process(delta: float, speed_scale: float = 1) -> bool:
 	for condition_event in self.condition_events.keys():
 		if condition_event.call():
 			for callback in self.condition_events[condition_event]:
+				if self.status != StateStatus.RUNNING:
+					return true
 				callback.call()
 
 	for timer_duration in self._timers.keys():
+		if self.status != StateStatus.RUNNING:
+			return true
 		self._timers[timer_duration].process(timer_duration, delta * speed_scale)
 		
 	if self.status != StateStatus.RUNNING:
@@ -202,10 +208,8 @@ func process(delta: float, speed_scale: float = 1) -> bool:
 	
 	var custom_process_method_return_value: bool = false
 	for process_method in self.process_events:
-		#if self.status == StateStatus.EXITED:
-			#custom_update_method_return_value = true
-			#break
-		#if is_method_still_bound(update_method):
+		if self.status != StateStatus.RUNNING:
+			return true
 		if process_method.get_argument_count() == 0:
 			if process_method.call():
 				custom_process_method_return_value = true
