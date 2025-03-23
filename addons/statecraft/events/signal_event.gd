@@ -1,4 +1,4 @@
-class_name SignalEvent extends Event
+class_name SignalEvent extends StateEvent
 
 var sig: Signal
 var strip_args: bool

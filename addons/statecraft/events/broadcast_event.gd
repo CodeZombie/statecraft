@@ -1,4 +1,4 @@
-class_name BroadcastEvent extends Event
+class_name BroadcastEvent extends StateEvent
 
 var broadcast_name: StringName
 

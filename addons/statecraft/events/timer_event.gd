@@ -1,4 +1,4 @@
-class_name TimerEvent extends Event
+class_name TimerEvent extends StateEvent
 
 var duration: float
 

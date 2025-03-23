@@ -1,4 +1,4 @@
-class_name SignalPathEvent extends Event
+class_name SignalPathEvent extends StateEvent
 
 var signal_path: NodePath
 

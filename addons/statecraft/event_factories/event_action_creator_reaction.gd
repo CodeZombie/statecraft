@@ -3,9 +3,9 @@ class_name EventActionCreatorReaction extends Object
 var from_state_nodepaths: Array
 var additional_condition: Callable
 var parent: State
-var event: Event
+var event: StateEvent
 
-func _init(parent: State, from_state_nodepaths: Array, event: Event):
+func _init(parent: State, from_state_nodepaths: Array, event: StateEvent):
 	self.parent = parent
 	self.from_state_nodepaths = from_state_nodepaths
 	self.event = event

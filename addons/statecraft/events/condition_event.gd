@@ -1,4 +1,4 @@
-class_name ConditionEvent extends Event
+class_name ConditionEvent extends StateEvent
 
 var condition: Callable
 var invert: bool
