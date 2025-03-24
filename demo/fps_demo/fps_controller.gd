@@ -1,4 +1,4 @@
-extends CharacterBody3D
+class_name Player extends CharacterBody3D
 
 var speed_scale: float = 1.0
 var _desired_speed_scale: float = speed_scale
@@ -45,6 +45,8 @@ var _desired_speed_scale: float = speed_scale
 	CROUCH = "crouch",
 	RUN = "run",
 }
+
+@onready var head: Node3D = $Head
 
 ## Private Members
 var _height: float = self.standing_height

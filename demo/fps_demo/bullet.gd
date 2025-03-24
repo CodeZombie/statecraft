@@ -29,15 +29,11 @@ var contact_point: Vector3 = Vector3.ZERO
 			
 	.add(State.new(^"collision", false)
 		.add_enter_event(func():
-			print(contact)
 			if contact is RigidBody3D:
 				contact.apply_impulse(
 					(velocity_vector/10)/contact.mass, 
 					contact.to_local(contact_point))
 			elif contact is PhysicalBone3D:
-				#contact.apply_impulse(
-					#(velocity_vector/20),
-					#contact.to_local(contact_point)))
 				contact.apply_central_impulse(velocity_vector/20))
 		.on_timer(1.0).then_exit())\
 	
