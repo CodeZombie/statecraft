@@ -17,7 +17,7 @@ var walk_animation_condition: Callable
 var run_animation_condition: Callable
 var get_speed_scale_method: Callable
 
-var mag_capacity: int = 12
+var mag_capacity: int = 6
 var rounds_in_mag: int = self.mag_capacity
 
 var active_bullets: Array[Object] = []
@@ -72,7 +72,7 @@ var active_bullets: Array[Object] = []
 
 	.add(State.new(^"empty_fire", false)
 		.add_enter_event(func(): self.play_sound(self.click_sound))
-		.on_timer(self.fire_rate).then_exit())\
+		.on_dynamic_timer(randf_range.bind(self.fire_rate - 0.05, self.fire_rate + 0.05)).then_exit())\
 		
 	.add(State.new(^"reload", false)
 		.add_enter_event(func():

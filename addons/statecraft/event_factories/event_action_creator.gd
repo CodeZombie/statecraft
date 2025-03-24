@@ -31,3 +31,5 @@ func on_signal(sig: Variant, arg_filter: Variant = null) -> EventActionCreatorRe
 func on_timer(duration: float) -> EventActionCreatorReaction:
 	return EventActionCreatorReaction.new(self.parent, self.from_state_node_paths, TimerEvent.new(duration))
 	
+func on_dynamic_timer(duration_callable: Callable) -> EventActionCreatorReaction:
+	return EventActionCreatorReaction.new(self.parent, self.from_state_node_paths, DynamicTimerEvent.new(duration_callable))

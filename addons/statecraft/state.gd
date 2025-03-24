@@ -26,6 +26,8 @@ var _debug_draw_label_running_color_fade_factor: float = 0.0
 
 var _timers: Dictionary[float, SCUtils.CallbackTimer] = {}
 
+var _dynamic_timers: Array[SCUtils.DynamicCallbackTimer] = []
+
 var _unique_id_counter: int = 0
 
 ###
@@ -93,6 +95,9 @@ func on_signal_path(signal_path: String) -> EventActionCreatorReaction:
 
 func on_timer(duration: float) -> EventActionCreatorReaction:
 	return EventActionCreator.new(self).on_timer(duration)
+	
+func on_dynamic_timer(duration_callable: Callable) -> EventActionCreatorReaction:
+	return EventActionCreator.new(self).on_dynamic_timer(duration_callable)
 
 func if_true(condition: Callable) -> EventActionCreatorReaction:
 	return EventActionCreator.new(self).if_true(condition)
@@ -141,6 +146,12 @@ func add_on_timer_event(timer_duration: float, callback: Callable) -> State:
 	self._timers[timer_duration].add_callback(callback)
 	return self
 
+func add_on_dynamic_timer_event(timer_duration_callable: Callable, callback: Callable) -> State:
+	var dynamic_callback_timer: SCUtils.DynamicCallbackTimer = SCUtils.DynamicCallbackTimer.new(timer_duration_callable)
+	dynamic_callback_timer.add_callback(callback)
+	self._dynamic_timers.append(dynamic_callback_timer)
+	return self
+
 func add_on_broadcast_event(broadcast_name: StringName, callable: Callable) -> State:
 	self.broadcast_.connect(func(broadcast_name_: StringName):
 		if self.status == StateStatus.RUNNING and broadcast_name == broadcast_name_:
@@ -168,6 +179,9 @@ func enter() -> bool:
 	# Reset timers:
 	for timer in self._timers.values():
 		timer.reset()
+
+	for dynamic_timer in self._dynamic_timers:
+		dynamic_timer.reset()
 	
 	# run Enter events
 	for enter_method in self.enter_events:
@@ -202,6 +216,11 @@ func process(delta: float, speed_scale: float = 1) -> bool:
 		if self.status != StateStatus.RUNNING:
 			return true
 		self._timers[timer_duration].process(timer_duration, delta * speed_scale)
+	
+	for dynamic_timer in self._dynamic_timers:
+		if self.status != StateStatus.RUNNING:
+			return true
+		dynamic_timer.process(delta * speed_scale)
 		
 	if self.status != StateStatus.RUNNING:
 		return true
@@ -307,6 +326,9 @@ func as_string(indent: int = 0) -> String:
 	var timer_string: String = ""
 	for timer in self._timers.values():
 		timer_string += "{0}".format({0: timer.elapsed_time})
+
+	for dynamic_timer in self._dynamic_timers:
+		timer_string += "{0}".format({0: dynamic_timer.elapsed_time})
 		
 	return "{indent_string} {id} : {status} -> {timers}".format({
 		'indent_string': indent_string,

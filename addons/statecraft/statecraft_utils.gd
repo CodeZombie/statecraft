@@ -57,3 +57,28 @@ class CallbackTimer:
 		if elapsed_time >= target_time:
 			for callback in self.callbacks:
 				callback.call()
+
+class DynamicCallbackTimer:
+	var duration_callable: Callable
+	var _duration: float
+	var elapsed_time: float = 0.0
+	var callbacks: Array[Callable] = []
+	
+	func _init(duration_callable_: Callable):
+		self.duration_callable = duration_callable_
+
+	func add_callback(callback: Callable):
+		self.callbacks.append(callback)
+
+	func reset() -> void:
+		self._duration = self.duration_callable.call()
+		self.elapsed_time = 0.0
+
+	func process(delta: float) -> void:
+		if self.elapsed_time >= self._duration:
+			return
+			
+		self.elapsed_time += delta
+		if elapsed_time >= self._duration:
+			for callback in self.callbacks:
+				callback.call()
