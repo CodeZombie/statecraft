@@ -2,9 +2,9 @@
 
 [ext_resource type="Material" uid="uid://b5s14mpj5gowu" path="res://demo/assets/materials/noise_material.tres" id="1_ibykj"]
 [ext_resource type="Script" uid="uid://2quensr3kj81" path="res://demo/fps_demo/fps_controller.gd" id="1_mntv1"]
-[ext_resource type="PackedScene" uid="uid://vxmpekohjt3g" path="res://demo/fps_demo/gun.tscn" id="2_u58pc"]
 [ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/fps_demo/state_vis.gd" id="3_g8rs0"]
 [ext_resource type="Script" uid="uid://cgardrpd3npst" path="res://demo/fps_demo/aiming_controller_vis.gd" id="4_xegy3"]
+[ext_resource type="PackedScene" uid="uid://d2l8wld86eln1" path="res://demo/fps_demo/ak_308.tscn" id="6_mh4n8"]
 
 [sub_resource type="Shader" id="Shader_g8rs0"]
 code = "// NOTE: Shader automatically converted from Godot Engine 4.4.stable's StandardMaterial3D.
@@ -602,12 +602,12 @@ mesh = SubResource("CylinderMesh_mh4n8")
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
 [node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("held_weapon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 9.5, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 8.81002, 0)
 disable_mode = 2
 collision_layer = 2
 floor_snap_length = 1.0
 script = ExtResource("1_mntv1")
-held_weapon = NodePath("Head/ARm/Hand/gun")
+held_weapon = NodePath("Head/ARm/Hand/ak_308")
 
 [node name="fps_controller_vis" type="Node2D" parent="Player"]
 script = ExtResource("3_g8rs0")
@@ -616,9 +616,9 @@ script = ExtResource("3_g8rs0")
 position = Vector2(300, 0)
 script = ExtResource("4_xegy3")
 
-[node name="zoom_controller_vis" type="Node2D" parent="Player"]
-position = Vector2(440, 0)
-script = ExtResource("3_g8rs0")
+[node name="gun_vis" type="Node2D" parent="Player"]
+position = Vector2(565, 0)
+script = ExtResource("4_xegy3")
 
 [node name="Head" type="Node3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
@@ -627,23 +627,12 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
 physics_interpolation_mode = 1
 
 [node name="Hand" type="Node3D" parent="Player/Head/ARm"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.065, -0.085, 0.02)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11, -0.015, -0.035)
 
-[node name="gun" parent="Player/Head/ARm/Hand" node_paths=PackedStringArray("root") instance=ExtResource("2_u58pc")]
-physics_interpolation_mode = 1
-fire_rate = 0.15
+[node name="ak_308" parent="Player/Head/ARm/Hand" node_paths=PackedStringArray("gun_fsm_vis", "root") instance=ExtResource("6_mh4n8")]
+transform = Transform3D(-1.09278e-09, 0, 0.025, 0, 0.025, 0, -0.025, 0, -1.09278e-09, 0.111, -0.133, -0.325)
+gun_fsm_vis = NodePath("../../../../gun_vis")
 root = NodePath("../../../../..")
-
-[node name="SpotLight3D" type="SpotLight3D" parent="Player/Head/ARm/Hand/gun"]
-transform = Transform3D(1, 0, 0, 0, 0.999816, 0.0191974, 0, -0.0191974, 0.999816, 0.2, -0.102707, -0.480974)
-light_energy = 10.399
-shadow_enabled = true
-spot_range = 22.36
-spot_angle = 18.694
-
-[node name="gun_controller_vis" type="Node2D" parent="Player/Head/ARm/Hand/gun"]
-position = Vector2(170, 1)
-script = ExtResource("3_g8rs0")
 
 [node name="Camera3D" type="Camera3D" parent="Player/Head"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.111165, -0.0209036, 0)

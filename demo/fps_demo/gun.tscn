@@ -2974,9 +2974,8 @@ _data = {
 &"LVA4_Armature|wpn_val_walk": SubResource("Animation_uowja")
 }
 
-[node name="low_poly_val" type="Node3D" node_paths=PackedStringArray("animation_player", "audio_player", "bullet_impulse_origin", "bullet_spawn_marker")]
+[node name="low_poly_val" type="Node3D" node_paths=PackedStringArray("audio_player", "bullet_impulse_origin", "bullet_spawn_marker")]
 script = ExtResource("1_ai0ep")
-animation_player = NodePath("AnimationPlayer")
 audio_player = NodePath("AudioStreamPlayer3D")
 bullet_impulse_origin = NodePath("Sketchfab_model/17f46f90b2d64803ad38ac474c515e7c_fbx/Object_2/RootNode/LVA4_Armature/Object_7/Skeleton3D/BoneAttachment3D/BulletImpulseOrigin")
 bullet_spawn_marker = NodePath("Sketchfab_model/17f46f90b2d64803ad38ac474c515e7c_fbx/Object_2/RootNode/LVA4_Armature/Object_7/Skeleton3D/BoneAttachment3D/BulletSpawnMarker")

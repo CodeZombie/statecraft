@@ -52,67 +52,89 @@ var _mouse_input: Vector2 = Vector2.ZERO
 var _camera_fov: float = self.normal_camera_fov
 var _desired_direction: Vector3 = Vector3.ZERO
 
+@onready var _prev_location: Vector3 = self.global_position
+var _total_steps: float = 0.0
+var _time_in_air: float = 0.0
+
 @onready var _body_shape: Shape3D = $Body.shape
 @onready var camera_3d: Camera3D = $Head/Camera3D
 @onready var arm: Node3D = $Head/ARm
 
+@onready var hand_hipfire_offset: Vector3 = $Head/ARm/Hand.position
 
 var sights_fsm: StateMachine = StateMachine.new(^"sights_fsm")\
-	.from(^"hipfire").if_true(self.wants_iron_sights).then_transition_to(^"aiming")\
-	.from(^"iron_sights").if_false(self.wants_iron_sights).then_transition_to(^"resting")\
-	.from(^"resting").on_signal(^"resting:exited").then_transition_to(^"hipfire")\
-	.from(^"aiming").on_signal(^"aiming:exited").then_transition_to(^"iron_sights")\
-	
-	.add(State.new(^"hipfire", false)
-		.add_enter_event(func():
-			camera_3d.position = Vector3.ZERO))\
-	
-	.add(State.new(^"iron_sights", false)
-		.add_enter_event(func():
-			camera_3d.position = Vector3(0.111, -0.021, 0.0)))\
-	
-	.add(StateQueue.new(^"resting")\
-		.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
-		
-		.add(TweenState.new(^"raise_head", self, func(tween: Tween): 
-			tween.tween_property(camera_3d, "position", Vector3.ZERO, 0.2)))
+.add(State.new(^"idle", false))\
+.add(TweenState.new(^"lifting_gun_to_face", self, func(tween: Tween):
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property($Head/Camera3D, ^"fov", self.zoom_camera_fov, 0.35)
+	tween.parallel().tween_property($Head/ARm/Hand, ^"position", Vector3.ZERO, 0.2)))\
+.add(State.new(^"in_ironsights", false))\
+.add(TweenState.new(^"lowering_gun_from_face", self, func(tween: Tween):
+	tween.set_trans(Tween.TRANS_CUBIC)
+	tween.set_ease(Tween.EASE_IN_OUT)
+	tween.parallel().tween_property($Head/Camera3D, ^"fov", self.normal_camera_fov, 0.2)
+	tween.parallel().tween_property($Head/ARm/Hand, ^"position", self.hand_hipfire_offset, 0.3)))\
+.from([^"idle", ^"lowering_gun_from_face"]).if_true(self.wants_iron_sights).then_transition_to(^"lifting_gun_to_face")\
+.from([^"lifting_gun_to_face", ^"in_ironsights"]).if_false(self.wants_iron_sights).then_transition_to(^"lowering_gun_from_face")\
+.on_signal_path(^"lifting_gun_to_face:exited").then_transition_to(^"in_ironsights")\
+.on_signal_path(^"lowering_gun_from_face:exited").then_transition_to(^"idle")
+#var sights_fsm: StateMachine = StateMachine.new(^"sights_fsm")\
+	#.from(^"hipfire").if_true(self.wants_iron_sights).then_transition_to(^"aiming")\
+	#.from(^"iron_sights").if_false(self.wants_iron_sights).then_transition_to(^"resting")\
+	#.from(^"resting").on_signal(^"resting:exited").then_transition_to(^"hipfire")\
+	#.from(^"aiming").on_signal(^"aiming:exited").then_transition_to(^"iron_sights")\
+	#
+	#.add(State.new(^"hipfire", false)
+		#.add_enter_event(func():
+			#camera_3d.position = Vector3.ZERO))\
+	#
+	#.add(State.new(^"iron_sights", false)
+		#.add_enter_event(func():
+			#camera_3d.position = Vector3(0.111, -0.021, 0.0)))\
+	#
+	#.add(StateQueue.new(^"resting")\
+		#.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
+		#
+		#.add(TweenState.new(^"raise_head", self, func(tween: Tween): 
+			#tween.tween_property(camera_3d, "position", Vector3.ZERO, 0.2)))
+#
+		#.add(TweenState.new(^"lower_gun", self, func(tween: Tween): 
+			#tween.tween_property(arm, "position", Vector3.ZERO, 0.2)))
+#
+		#.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
+			#tween.tween_property(arm, "rotation", Vector3.ZERO, 0.2))))\
+#
+	#.add(StateQueue.new(^"aiming")\
+		#.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
+		#
+		#.add(TweenState.new(^"lower_head", self, func(tween: Tween): 
+			#tween.tween_property(camera_3d, "position", Vector3(0.111, -0.021, 0.0), 0.2)))
+#
+		#.add(TweenState.new(^"raise_gun", self, func(tween: Tween): 
+			#tween.tween_property(arm, "position", Vector3(0.004, 0.027, 0.0), 0.2)))
+			#
+		#.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
+			#tween.tween_property(arm, "rotation_degrees", Vector3(-5.7, -3.0, -3.5), 0.2))))
 
-		.add(TweenState.new(^"lower_gun", self, func(tween: Tween): 
-			tween.tween_property(arm, "position", Vector3.ZERO, 0.2)))
-
-		.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
-			tween.tween_property(arm, "rotation", Vector3.ZERO, 0.2))))\
-
-	.add(StateQueue.new(^"aiming")\
-		.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
-		
-		.add(TweenState.new(^"lower_head", self, func(tween: Tween): 
-			tween.tween_property(camera_3d, "position", Vector3(0.111, -0.021, 0.0), 0.2)))
-
-		.add(TweenState.new(^"raise_gun", self, func(tween: Tween): 
-			tween.tween_property(arm, "position", Vector3(0.004, 0.027, 0.0), 0.2)))
-			
-		.add(TweenState.new(^"rotate_gun", self, func(tween: Tween): 
-			tween.tween_property(arm, "rotation_degrees", Vector3(-5.7, -3.0, -3.5), 0.2))))
-
-var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
-	.add_process_event(func(delta: float):
-		$Head/Camera3D.fov = lerp($Head/Camera3D.fov, self._camera_fov, 8.0 * delta) 
-		self.speed_scale = lerp(self.speed_scale, self._desired_speed_scale, 12 * delta)
-		)\
-		
-	.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
-	.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
-	
-	.add(State.new("normal", false)
-		.add_enter_event(func(): 
-			self._desired_speed_scale = 1.0
-			self._camera_fov = self.normal_camera_fov) )\
-	
-	.add(State.new("zoom", false)
-		.add_enter_event(func(): 
-			self._desired_speed_scale = 0.2
-			self._camera_fov = self.zoom_camera_fov))
+#var camera_zoom_fsm: StateMachine = StateMachine.new(^"camera_controller")\
+	#.add_process_event(func(delta: float):
+		#$Head/Camera3D.fov = lerp($Head/Camera3D.fov, self._camera_fov, 8.0 * delta) 
+		#self.speed_scale = lerp(self.speed_scale, self._desired_speed_scale, 12 * delta)
+		#)\
+		#
+	#.from(^"normal").if_true(self.wants_to_zoom).then_transition_to(^"zoom")\
+	#.from(^"zoom").if_false(self.wants_to_zoom).then_transition_to(^"normal")\
+	#
+	#.add(State.new("normal", false)
+		#.add_enter_event(func(): 
+			#self._desired_speed_scale = 1.0
+			#self._camera_fov = self.normal_camera_fov) )\
+	#
+	#.add(State.new("zoom", false)
+		#.add_enter_event(func(): 
+			#self._desired_speed_scale = 0.2
+			#self._camera_fov = self.zoom_camera_fov))
 
 var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 	.add_process_event(self.global_physics_process)\
@@ -222,27 +244,41 @@ func _ready() -> void:
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 	
 	$fps_controller_vis.state_machine = self.fps_fsm
-	$zoom_controller_vis.state_machine = self.camera_zoom_fsm
+	#$zoom_controller_vis.state_machine = self.camera_zoom_fsm
 	$aiming_controller_vis.state_machine = self.sights_fsm
-
 	
-	self.held_weapon.walk_animation_condition = self.is_walking
-	self.held_weapon.run_animation_condition = self.is_sprinting
 	self.held_weapon.get_speed_scale_method = self.get_speed_scale
 
 func _physics_process(delta: float) -> void:
 		# update the State Mahcines
 	self.fps_fsm.run(delta, self.speed_scale)
 	self.sights_fsm.run(delta, self.speed_scale)
-	self.camera_zoom_fsm.run(delta, self.speed_scale)
+	#self.camera_zoom_fsm.run(delta, self.speed_scale)
 	
 func global_physics_process(delta: float) -> void:
+	var footstep_speed: float = (self.global_position - self._prev_location).length()
+	if self.in_the_air():
+		self._time_in_air += delta
+	else:
+		self._time_in_air = 0.0
+		
+	footstep_speed = max(0.0, footstep_speed - self._time_in_air / 6.0)
+	if self.is_crouching():
+		footstep_speed /= 2.0
 	
+	self._total_steps += footstep_speed
+	self._prev_location = self.global_position
 	# Apply gravity
 	self.velocity.y -= ProjectSettings.get_setting(&"physics/3d/default_gravity") * delta
 	
+	self.arm.position.y = sin(self._total_steps / 75.0 * 100.0) * 0.15 * footstep_speed * delta * 10.0
+	self.arm.position.x = sin(self._total_steps / 150.0 * 100.0) * 0.05 * footstep_speed * delta * 10.0
+	self.arm.position.z = sin(self._total_steps / 200.0 * 100.0) * 0.025 * footstep_speed * delta * 10.0
+	$Head/ARm/Hand/ak_308.rotation.x = sin(self._total_steps / 200.0 * 100.0) * 1.25 * footstep_speed * delta * 10.0
+	$Head/ARm/Hand/ak_308/Sketchfab_model.rotation.y = sin(self._total_steps / 125.0 * 100.0) * (PI/4.0) * footstep_speed * delta * 10.0
 	
-		# Apply basic movement physics
+	
+	# Apply basic movement physics
 	var old_velocity = self.velocity
 	self.velocity *= 60 * delta
 	self.move_and_slide()

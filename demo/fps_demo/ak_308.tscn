@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3 uid="uid://d2l8wld86eln1"]
+
+[ext_resource type="PackedScene" uid="uid://cy578ux1u4afw" path="res://demo/assets/models/ak_308/scene.gltf" id="1_gmmda"]
+[ext_resource type="Script" uid="uid://c1ppbnurq7wy5" path="res://demo/fps_demo/gun_controller.gd" id="2_npnlb"]
+
+[node name="Sketchfab_Scene" node_paths=PackedStringArray("audio_player", "bullet_impulse_origin", "bullet_spawn_marker") instance=ExtResource("1_gmmda")]
+script = ExtResource("2_npnlb")
+audio_player = NodePath("AudioStreamPlayer3D")
+bullet_impulse_origin = NodePath("Sketchfab_model/bullet_impulse_origin")
+bullet_spawn_marker = NodePath("Sketchfab_model/bullet_origin")
+
+[node name="bullet_origin" type="Marker3D" parent="Sketchfab_model" index="1"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 23.99, 3.07543e-16, 1.38505)
+
+[node name="bullet_impulse_origin" type="Marker3D" parent="Sketchfab_model" index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.67782, 3.07543e-16, 1.38505)
+
+[node name="AudioStreamPlayer3D" type="AudioStreamPlayer3D" parent="." index="1"]
+
+[node name="muzzle_flash_light" type="OmniLight3D" parent="." index="2"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 29.2419, 1.38563, 0)
+light_color = Color(0.88, 0.847147, 0.5984, 1)
+light_energy = 7.917
+omni_range = 95.2204

@@ -11,22 +11,20 @@ var gunshot_sound = preload("res://demo/assets/gunshot.mp3")
 var reload_sound = preload("res://demo/assets/reload.mp3")
 var click_sound = preload("res://demo/assets/click.mp3")
 
-# These two properties need to be set from an outside object.
-# They should hold methods that tell this gun whether the oject holding it is running or walking.
-var walk_animation_condition: Callable
-var run_animation_condition: Callable
+
 var get_speed_scale_method: Callable
 
-var mag_capacity: int = 6
+var mag_capacity: int = 500
 var rounds_in_mag: int = self.mag_capacity
 
 var active_bullets: Array[Object] = []
 
-@export var fire_rate: float = 0.1
+@export var gun_fsm_vis: FSMVis
+
+@export var fire_rate: float = 0.2
 @export var muzzle_velocity: float = 280.0
 
 @export var root: Node3D
-@export var animation_player: AnimationPlayer
 @export var audio_player: AudioStreamPlayer3D
 @export var bullet_impulse_origin: Marker3D
 @export var bullet_spawn_marker: Marker3D
@@ -40,31 +38,33 @@ var active_bullets: Array[Object] = []
 	.from(^"empty_fire").on_signal(^"empty_fire:exited").then_transition_to(^"idle")\
 	.from(^"reload").on_signal(^"reload:exited").then_transition_to(^"idle")\
 
-	.add(StateMachine.new(^"idle")
-		.from([^"walk", ^"sprint"]).if_false(self.should_play_walk_animation).and_if_false(self.should_play_run_animation).then_transition_to(^"static")
-		.from([^"static", ^"sprint"]).if_true(self.should_play_walk_animation).then_transition_to(^"walk")
-		.from([^"static", ^"walk"]).if_true(self.should_play_run_animation).then_transition_to(^"sprint")
-		
-		.add(State.new(^"static", false)
-			.add_enter_event(self.play_animation.bind(&"LVA4_Armature|wpn_val_idle")) )
-			
-		.add(State.new(^"walk", false)
-			.add_enter_event(self.play_animation.bind(&"LVA4_Armature|wpn_val_walk")) )
-			
-		.add(State.new(^"sprint", false)
-			.add_enter_event(self.play_animation.bind(&"LVA4_Armature|wpn_val_sprint"))) )\
+	.add(State.new(^"idle", false))\
 	
 	# Tween states allow a state to execute a tween, exiting upon completion.
 	# Tweens need to be defined using a callback so that they can be re-created every time this state enters.
 	# Godot does not allow states to be "re-run" - they must be re-created if you want them to run again, and this
 	# callback system allows us to do that dynamically.
-	.add(TweenState.new(^"shoot", self, func(tween: Tween): 
+	.add(TweenState.new(^"shoot", self, func(tween: Tween):
+			var original_position: Vector3 = self.position
+			var kickback_position: Vector3 = Vector3(
+				self.position.x + randf_range(-0.005, 0.005),
+				self.position.y + randf_range(0, 0.005),
+				self.position.z + randf_range(0.2, 0.3),
+				)
 			# Push back into the player's shoulder
-			tween.tween_property(self, ^":position:z", .1, min(0.15, self.fire_rate / 2.0)) 
+			tween.set_trans(Tween.TRANS_ELASTIC)
+			tween.set_ease(Tween.EASE_OUT)
+			tween.tween_property(self, ^":position", kickback_position, min(0.15, self.fire_rate / 2.0)) 
 			# Return to original position
-			tween.tween_property(self, ^":position:z", 0.0, min(0.15, self.fire_rate / 2.0)) )
-		.add_enter_event(func(): 
-			self.play_animation(&"LVA4_Armature|wpn_val_shoot")
+			tween.tween_property(self, ^":position", original_position, min(0.15, self.fire_rate / 2.0)) )
+		.add_enter_event(func():
+			var bullet = BULLET.instantiate()
+			bullet.get_speed_scale_method = self.get_speed_scale_method
+			root.add_child(bullet)
+			bullet.global_transform.basis = bullet_spawn_marker.global_transform.basis
+			bullet.global_position = bullet_spawn_marker.global_position
+			var direction = (bullet_spawn_marker.global_position - bullet_impulse_origin.global_position).normalized()
+			bullet.velocity_vector = direction*muzzle_velocity
 			self.rounds_in_mag -= 1
 			self.play_sound(self.gunshot_sound)
 			self.trigger_muzzle_flash.emit()
@@ -75,18 +75,11 @@ var active_bullets: Array[Object] = []
 		.on_dynamic_timer(randf_range.bind(self.fire_rate - 0.05, self.fire_rate + 0.05)).then_exit())\
 		
 	.add(State.new(^"reload", false)
+		.on_timer(0.75).then_exit()
 		.add_enter_event(func():
-			self.play_animation(&"LVA4_Armature|wpn_val_reload")
 			self.play_sound(self.reload_sound) )
 		.add_exit_event(func():
-			self.rounds_in_mag = self.mag_capacity )
-		# There's a little bit of magic going on on this line.
-		# We want the State to exit when the animation finishes, so what we're doing here is:
-		# Hooking up a listener to the `animation_player.animation_finished` signal.
-		# However, the reaction (then_exit()) will only occur if the "filter" condition function is true.
-		# In this case, the filter condition function returns true if the animation name value that the signal is emitted with is
-		# the the same reload animation this state triggered in the enter event.
-		.on_signal(animation_player.animation_finished, func(animation_name: StringName): return animation_name == &"LVA4_Armature|wpn_val_reload").then_exit())
+			self.rounds_in_mag = self.mag_capacity ))
 
 	#.on_signal(animation_player.animation_finished, func(n: StringName): return n == &"LVA4_Armature|wpn_val_shoot").then_exit())
 var muzzle_flash_fsm: StateMachine = StateMachine.new("muzzle_flash_controller")\
@@ -94,41 +87,18 @@ var muzzle_flash_fsm: StateMachine = StateMachine.new("muzzle_flash_controller")
 	.from(^"flash").on_signal(^"flash:exited").then_transition_to(^"idle")\
 
 	.add(State.new(^"idle", false)
-		.add_enter_event(func(): $muzzle_flash.visible = false))\
+		.add_enter_event(func(): $muzzle_flash_light.visible = false))\
 		
 	.add(State.new("flash", false)
-		.add_enter_event(func():$muzzle_flash.visible = true)
+		.add_enter_event(func():$muzzle_flash_light.visible = true)
 		.on_timer(0.1).then_exit() )
 
-var bullet_spawn_fsm: StateMachine = StateMachine.new("bullet_spawner")\
-	.from(^"idle").on_signal(self.trigger_bullet_spawn).then_transition_to(^"fire")\
-	.from(^"fire").on_signal(self.trigger_bullet_spawn).then_transition_to(^"fire")\
-	.from(^"fire").on_signal(^"fire:exited").then_transition_to(^"idle")\
-	
-	.add(State.new(^"idle", false)
-		.add_enter_event(func():))\
-	.add(State.new(^"fire", false)
-		.add_enter_event(func():
-			var bullet = BULLET.instantiate()
-			bullet.get_speed_scale_method = self.get_speed_scale_method
-			root.add_child(bullet)
-			bullet.global_transform.basis = bullet_spawn_marker.global_transform.basis
-			bullet.global_position = bullet_spawn_marker.global_position
-			var direction = (bullet_spawn_marker.global_position - bullet_impulse_origin.global_position).normalized()
-			bullet.velocity_vector = direction*muzzle_velocity)
-		.on_timer(1).then_exit() )
-
 func _ready() -> void:
-	$gun_controller_vis.state_machine = self.gun_fsm	
+	self.gun_fsm_vis.state_machine = self.gun_fsm
 
-func play_animation(animation_name: StringName) -> void:
-	$AnimationPlayer.play(animation_name)
-	
 func _process(delta: float) -> void:
 	gun_fsm.run(delta, self.get_speed_scale_method.call())
 	muzzle_flash_fsm.run(delta, self.get_speed_scale_method.call())
-	bullet_spawn_fsm.run(delta, self.get_speed_scale_method.call())
-	self.animation_player.speed_scale = self.get_speed_scale_method.call()
 	self.audio_player.pitch_scale = self.get_speed_scale_method.call()
 	
 ### Conditions:

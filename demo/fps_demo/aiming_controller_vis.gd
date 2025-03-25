@@ -1,4 +1,4 @@
-extends Node2D
+class_name FSMVis extends Node2D
 var state_machine: StateMachine
 
 func _process(delta: float) -> void:
