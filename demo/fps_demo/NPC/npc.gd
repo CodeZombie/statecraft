@@ -91,7 +91,7 @@ func update_velocity(delta) -> void:
 	
 	var new_velocity: Vector3 = Vector3(0, 0, 0)
 	
-	new_velocity.y = direction.y * speed
+	new_velocity.y = direction.y
 	
 	if direction:
 		new_velocity.x = lerp(new_velocity.x, direction.x * speed, acceleration * delta)
@@ -105,11 +105,14 @@ func update_velocity(delta) -> void:
 func _on_navigation_agent_3d_velocity_computed(safe_velocity: Vector3) -> void:
 	velocity = velocity.move_toward(safe_velocity, 0.5)
 	animation_tree.set("parameters/BlendSpace1D/blend_position", velocity.length())
+	
+	#apply_floor_snap()
+	
 	move_and_slide()
 
 func update_rotation(delta) -> void:
-	if get_direction():
-		var new_transform = physics_model.transform.looking_at(get_direction(), Vector3.UP)
+	if velocity.length() > 0.5:
+		var new_transform = physics_model.transform.looking_at(get_direction() * Vector3(1, 0, 1), Vector3.UP)
 		physics_model.transform.basis = physics_model.transform.interpolate_with(new_transform, rotation_speed * delta).basis
 
 func find_observable_object():
