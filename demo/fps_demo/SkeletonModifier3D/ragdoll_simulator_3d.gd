@@ -38,9 +38,11 @@ func hookes_law(displacement: Vector3, current_velocity: Vector3, stiffness: flo
 func update_bone_dict() -> void:
 	for bone:PhysicalBone3D in get_physical_bones():
 		var target_transform: Transform3D = target_skeleton.global_transform * target_skeleton.get_bone_global_pose(bone.get_bone_id())
-		var current_transform: Transform3D = bone.global_transform
-		#var current_transform: Transform3D = get_parent().global_transform * get_parent().get_bone_global_pose(bone.get_bone_id())
-		
+		# multiply by bone.body_offset to ensure torque is applied to correct axis
+		target_transform.basis *= bone.body_offset.basis
+		var current_transform: Transform3D = get_skeleton().global_transform * get_skeleton().get_bone_global_pose(bone.get_bone_id()) * bone.body_offset
+		current_transform.origin = (bone.global_transform).origin
+
 		var bone_dict: Dictionary = {bone : [target_transform, current_transform]}
 		bones.merge(bone_dict, true)
 
@@ -78,13 +80,22 @@ func active_ragdoll_process(delta) -> void:
 		
 		var position_difference = target_transform.origin - current_transform.origin
 		if position_difference.length_squared() > 1.0:
-			bone.global_position = target_transform.origin
+			current_transform.origin = target_transform.origin
 		else:
 			var force: Vector3 = hookes_law(position_difference, bone.linear_velocity, linear_spring_stiffness, linear_spring_damping)
 			force = force.limit_length(max_linear_force)
 			bone.linear_velocity += (force * delta)
 		
 		var rotation_difference: Basis = (target_transform.basis * current_transform.basis.inverse())
+		
 		var torque = hookes_law(rotation_difference.get_euler(), bone.angular_velocity, angular_spring_stiffness, angular_spring_damping)
 		torque = torque.limit_length(max_angular_force)
+		
 		bone.angular_velocity += (torque * delta)
+		
+		#if bone.get_bone_id() == 5:
+			#print(bone.name)
+			#print("cur: ", current_transform.basis)
+			#print("tar: ", target_transform.basis)
+			#print("dif: ", rotation_difference)
+			#print("fin: ", torque.length())

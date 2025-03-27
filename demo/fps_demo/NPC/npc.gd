@@ -16,6 +16,7 @@ class_name NPC extends CharacterBody3D
 
 @onready var physics_model: Node3D = $PhysicsModel
 @onready var animation_player: AnimationPlayer = $PhysicsModel/AnimatedModel/AnimationPlayer
+@onready var animation_tree: AnimationTree = $AnimationTree
 @onready var navigation_agent_3d: NavigationAgent3D = $NavigationAgent3D
 @onready var area_3d: Area3D = $PhysicsModel/metarig/Skeleton3D/BoneAttachment3D/Area3D
 
@@ -68,10 +69,16 @@ func _ready() -> void:
 	$NPCControllerVis.state_machine = self.NPC_observe_fsm
 	
 	animation_player.play("run")
+	
+	#navigation_agent_3d.target_position = self.global_position
 
 func _physics_process(delta: float) -> void:
 	
 	#navigation_agent_3d.target_position = follow_target.global_position
+	if self.global_position.distance_to(follow_target.global_position) > 2.0:
+		navigation_agent_3d.target_position = follow_target.global_position
+	else:
+		navigation_agent_3d.target_position = self.global_position
 	
 	update_velocity(delta)
 	update_rotation(delta)
@@ -97,11 +104,13 @@ func update_velocity(delta) -> void:
 
 func _on_navigation_agent_3d_velocity_computed(safe_velocity: Vector3) -> void:
 	velocity = velocity.move_toward(safe_velocity, 0.5)
+	animation_tree.set("parameters/BlendSpace1D/blend_position", velocity.length())
 	move_and_slide()
 
 func update_rotation(delta) -> void:
-	var new_transform = physics_model.transform.looking_at(get_direction(), Vector3.UP)
-	physics_model.transform = physics_model.transform.interpolate_with(new_transform, rotation_speed * delta)
+	if get_direction():
+		var new_transform = physics_model.transform.looking_at(get_direction(), Vector3.UP)
+		physics_model.transform.basis = physics_model.transform.interpolate_with(new_transform, rotation_speed * delta).basis
 
 func find_observable_object():
 	look_at_modifier_target = null

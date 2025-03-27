@@ -633,11 +633,11 @@ mesh = SubResource("CylinderMesh_mh4n8")
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
 [node name="NPC" parent="." node_paths=PackedStringArray("follow_target") instance=ExtResource("6_mh4n8")]
-transform = Transform3D(-1, 0, 8.74228e-08, 0, 1, 0, -8.74228e-08, 0, -1, -2.24979, 0.522473, 5.84025)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.05181, 0.546267, 6.01529)
 follow_target = NodePath("../Player")
 
 [node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("held_weapon")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.85962, 1.58825, 9.01032)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.85962, 1.58825, 14.3157)
 disable_mode = 2
 collision_layer = 2
 collision_mask = 147
