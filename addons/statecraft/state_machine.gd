@@ -57,9 +57,6 @@ func get_state(id: NodePath) -> State:
 		assert(false, "No state with id \"{0}\" in State Machine {1}".format({0: id, 1: self.id}))
 	return self.states[id]
 	
-func get_states(state_id: NodePath) -> Array[State]:
-	return [self.get_state(state_id)]
-	
 func get_all_children() -> Array:
 	return self.states.values()
 	

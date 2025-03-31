@@ -34,9 +34,16 @@ func get_running_states() -> Array[State]:
 	
 func get_states(state_id: NodePath) -> Array[State]:
 	var matches: Array[State] = []
-	for state in self._child_states:
-		if state.id == state_id:
-			matches.append(state)
+	if state_id.get_name_count() == 1:
+		for state in self.get_all_children():
+			if state.id == state_id:
+				matches.append(state)
+		return matches
+	else:
+		for state in self.get_all_children():
+			var next_child: NodePath = NodePath(state_id.get_name(0))
+			if state.id == next_child:
+				matches += state.get_states(state_id.slice(1))
 	return matches
 
 func from(from_state_nodepath: NodePath) -> EventActionCreator:
