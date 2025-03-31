@@ -4,7 +4,7 @@ enum ExecutionMode {SERIAL, PARALLEL}
 enum ExitPolicy {KEEP, REMOVE}
 
 var _execution_mode: ExecutionMode = ExecutionMode.SERIAL
-var _exit_policy: ExitPolicy = ExitPolicy.KEEP
+var _exit_policy: ExitPolicy = ExitPolicy.REMOVE
 
 var _child_states: Array[State] = []
 

@@ -1,16 +1,25 @@
 class_name TweenState extends State
 
+enum EarlyExitPolicy {FINISH_TWEEN, DO_NOT_FINISH_TWEEN}
+
 var scene_node: Node
 var tween: Tween
 var tween_definition_method: Callable
 var _finished: bool = false
 var _tween_execution_position: State.ExecutionPosition = State.ExecutionPosition.POST_PROCESS
+var early_exit_policy: EarlyExitPolicy = EarlyExitPolicy.FINISH_TWEEN
+
+static var INSTANTLY_DISCARD = true
 
 func _init(state_id: String, scene_node: Node, tween_definition_method: Callable):
 	super(state_id)
 	self.keep_alive()
 	self.scene_node = scene_node
 	self.tween_definition_method = tween_definition_method
+	
+func set_early_exit_policy(policy: EarlyExitPolicy) -> TweenState:
+	self.early_exit_policy = policy
+	return self
 
 func kill():
 	if self.tween:
@@ -22,9 +31,12 @@ func enter() -> bool:
 		self.tween.kill()
 	self._finished = false
 	self.tween = self.scene_node.create_tween()
-	self.tween_definition_method.call(self.tween)
-	self.tween.play()
-	self.tween.pause()
+	if self.tween_definition_method.call(self.tween):
+		self.tween.kill()
+		self._finished = true
+	else:
+		self.tween.play()
+		self.tween.pause()
 	return super()
 	
 func set_tween_execution_position(execution_position: State.ExecutionPosition) -> TweenState:
@@ -38,9 +50,10 @@ func process(delta: float, speed_scale: float = 1):
 		
 	if self.tween and not self._finished:
 		self._finished = not self.tween.custom_step(delta * speed_scale)
-		if self._finished:
-			return true
 		
+	if self._finished:
+		return true
+
 	if self._tween_execution_position == State.ExecutionPosition.POST_PROCESS:
 		if super(delta, speed_scale):
 			return true
@@ -49,8 +62,9 @@ func process(delta: float, speed_scale: float = 1):
 
 func exit() -> bool:
 	if not self._finished:
-		self.run_instantly()
-		
+		if self.early_exit_policy == EarlyExitPolicy.FINISH_TWEEN:
+			self.run_instantly()
+			
 	if super():
 		self.kill()
 		return true

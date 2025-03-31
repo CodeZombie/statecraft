@@ -77,7 +77,7 @@ func copy(new_id: NodePath = self.id, _new_state = null) -> StateContainer:
 		_new_state.add_state(child_state.copy(child_state.id))
 	return _new_state
 	
-func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+func draw(node: CanvasItem, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
 	var y_offset = super(node, position, text_size, padding_size, delta)
 	var initial_y_offset = y_offset
 	var line_width: float = 4

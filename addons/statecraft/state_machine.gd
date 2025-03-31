@@ -1,6 +1,10 @@
 class_name StateMachine extends StateContainer
 
+enum ResetOnExitMode {RESET, DO_NOT_RESET}
+
 var states: Dictionary[NodePath, State] = {}
+
+var reset_on_exit_mode: ResetOnExitMode = ResetOnExitMode.RESET
 
 var initial_state_id: NodePath
 var current_state_id: NodePath:
@@ -25,6 +29,10 @@ func from(state_node_path: Variant) -> EventActionCreator:
 ###
 ### This is psychotic - way too many interfaces. Refactor all this shit.
 ###
+
+func set_reset_on_exit_mode(reset_on_exit_mode: ResetOnExitMode) -> StateMachine:
+	self.reset_on_exit_mode = reset_on_exit_mode
+	return self
 
 func copy(new_id: NodePath = self.id, _new_state = null) -> StateMachine:
 	return super(new_id, StateMachine.new(new_id) if not _new_state else _new_state)
@@ -83,10 +91,12 @@ func process(delta: float, speed_scale: float = 1.0) -> bool:
 	
 func exit() -> bool:
 	if self._debug: print(self.id, " EXIT (StateMachine)")
-	for state in self.get_all_children():
-		state.exit()
+	if self.reset_on_exit_mode == ResetOnExitMode.RESET:
+		for state in self.get_all_children():
+			state.exit()
 	var x = super()
-	self.current_state_id = self.initial_state_id
+	if self.reset_on_exit_mode == ResetOnExitMode.RESET:
+		self.current_state_id = self.initial_state_id
 	return x
 
 func transition_to(state_path: NodePath) -> StateContainer:

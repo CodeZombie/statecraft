@@ -68,13 +68,17 @@ var sights_fsm: StateMachine = StateMachine.new(^"sights_fsm")\
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property($Head/Camera3D, ^"fov", self.zoom_camera_fov, 0.35)
-	tween.parallel().tween_property($Head/ARm/Hand, ^"position", Vector3.ZERO, 0.2)))\
+	tween.parallel().tween_property($Head/ARm/Hand, ^"position", Vector3.ZERO, 0.2))
+	.set_early_exit_policy(TweenState.EarlyExitPolicy.DO_NOT_FINISH_TWEEN)
+	)\
 .add(State.new(^"in_ironsights", false))\
 .add(TweenState.new(^"lowering_gun_from_face", self, func(tween: Tween):
 	tween.set_trans(Tween.TRANS_CUBIC)
 	tween.set_ease(Tween.EASE_IN_OUT)
 	tween.parallel().tween_property($Head/Camera3D, ^"fov", self.normal_camera_fov, 0.2)
-	tween.parallel().tween_property($Head/ARm/Hand, ^"position", self.hand_hipfire_offset, 0.3)))\
+	tween.parallel().tween_property($Head/ARm/Hand, ^"position", self.hand_hipfire_offset, 0.3))
+	.set_early_exit_policy(TweenState.EarlyExitPolicy.DO_NOT_FINISH_TWEEN)
+	)\
 .from([^"idle", ^"lowering_gun_from_face"]).if_true(self.wants_iron_sights).then_transition_to(^"lifting_gun_to_face")\
 .from([^"lifting_gun_to_face", ^"in_ironsights"]).if_false(self.wants_iron_sights).then_transition_to(^"lowering_gun_from_face")\
 .on_signal_path(^"lifting_gun_to_face:exited").then_transition_to(^"in_ironsights")\
@@ -196,6 +200,7 @@ var fps_fsm: StateMachine = StateMachine.new(^"fps controller")\
 			)))\
 			
 	.add(StateQueue.new(^"in_the_air")\
+		.set_exit_policy(StateQueue.ExitPolicy.KEEP)
 		.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
 
 		.add(StateMachine.new(^"stance")\
@@ -255,6 +260,7 @@ func _physics_process(delta: float) -> void:
 	self.sights_fsm.run(delta, self.speed_scale)
 	#self.camera_zoom_fsm.run(delta, self.speed_scale)
 	
+	
 func global_physics_process(delta: float) -> void:
 	var footstep_speed: float = (self.global_position - self._prev_location).length()
 	if self.in_the_air():
@@ -263,19 +269,23 @@ func global_physics_process(delta: float) -> void:
 		self._time_in_air = 0.0
 		
 	footstep_speed = max(0.0, footstep_speed - self._time_in_air / 6.0)
-	if self.is_crouching():
-		footstep_speed /= 2.0
+	#if self.is_crouching():
+		#footstep_speed /= 2.0
 	
 	self._total_steps += footstep_speed
 	self._prev_location = self.global_position
 	# Apply gravity
 	self.velocity.y -= ProjectSettings.get_setting(&"physics/3d/default_gravity") * delta
 	
+	#$Head.position.x = sin(self._total_steps / 150.0 * 100.0) * 0.15 * footstep_speed * delta * 10.0
+	$Head.position.y = sin(self._total_steps * 1.5 * (1.0 / max(footstep_speed, 1))) * 50.0 * footstep_speed * delta
+	#$Head.position.z = sin(self._total_steps / 100.0 * 100.0) * 0.15 * footstep_speed * delta * 10.0
+
 	self.arm.position.y = sin(self._total_steps / 75.0 * 100.0) * 0.15 * footstep_speed * delta * 10.0
 	self.arm.position.x = sin(self._total_steps / 150.0 * 100.0) * 0.05 * footstep_speed * delta * 10.0
 	self.arm.position.z = sin(self._total_steps / 200.0 * 100.0) * 0.025 * footstep_speed * delta * 10.0
-	$Head/ARm/Hand/ak_308.rotation.x = sin(self._total_steps / 200.0 * 100.0) * 1.25 * footstep_speed * delta * 10.0
-	$Head/ARm/Hand/ak_308/Sketchfab_model.rotation.y = sin(self._total_steps / 125.0 * 100.0) * (PI/4.0) * footstep_speed * delta * 10.0
+	#self.arm.rotation.x = sin(self._total_steps / 200.0 * 100.0) * 1.25 * footstep_speed * delta * 10.0
+	#self.arm.rotation.y = sin(self._total_steps / 125.0 * 100.0) * (PI/4.0) * footstep_speed * delta * 10.0
 	
 	
 	# Apply basic movement physics
@@ -283,6 +293,8 @@ func global_physics_process(delta: float) -> void:
 	self.velocity *= 60 * delta
 	self.move_and_slide()
 	self.velocity = old_velocity
+	
+	
 
 
 	
@@ -290,7 +302,7 @@ func global_physics_process(delta: float) -> void:
 	self._body_shape.height = move_toward(self._body_shape.height, self._height, max(0.05, self.crouch_height_speed * delta))
 
 func _process(delta: float) -> void:
-	
+	print($Head.position)
 	# Apply mouselook
 	self.rotation_degrees.y -= self._mouse_input.x * self.mouse_sensitivity
 	$Head.rotation_degrees.x -= self._mouse_input.y * self.mouse_sensitivity

@@ -11,10 +11,10 @@ func attach_to_state(state: State, callable: Callable, target_state_paths: Array
 
 	for target_state_path in target_state_paths:
 		if target_state_path.get_name_count() == 0:
-			state.add_on_broadcast_callback(broadcast_name_, bound_callable)
+			state.add_on_broadcast_event(broadcast_name_, bound_callable)
 		else:
 			state.recieve_message(RelayMessage.new(
 				target_state_path,
-				&"add_on_broadcast_callback",
+				&"add_on_broadcast_event",
 				[broadcast_name_, bound_callable],
 			))

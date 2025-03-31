@@ -16,6 +16,11 @@ func if_false(condition: Callable) -> EventActionCreatorReaction:
 func on_enter() -> EventActionCreatorReaction:
 	return EventActionCreatorReaction.new(self.parent, self.from_state_node_paths, SignalPathEvent.new(^":entered"))
 
+# TODO: this is incredibly confusing.
+# Does this trigger when `from_state` exits, or when `parent` exits?
+# I believe it's when `parent` exits, but based on how you'd write this, that isn't obvious.
+# It also might not even ever work, because when the parent exits, its not "in" any states, so this
+# will perhaps never even execute? not sure.
 func on_exit() -> EventActionCreatorReaction:
 	return EventActionCreatorReaction.new(self.parent, self.from_state_node_paths, SignalPathEvent.new(^":exited"))
 

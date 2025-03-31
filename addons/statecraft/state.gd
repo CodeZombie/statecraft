@@ -159,7 +159,7 @@ func add_on_broadcast_event(broadcast_name: StringName, callable: Callable) -> S
 	return self
 
 func broadcast(broadcast_name: StringName) -> void:
-	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [broadcast_name]))
+	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [&"broadcast_", broadcast_name]))
 
 func set_prop(key: String, value: Variant) -> State:
 	self.props[key] = value
@@ -287,16 +287,19 @@ func run(delta: float = Engine.get_main_loop().root.get_process_delta_time(), sp
 	if self.status == StateStatus.READY:
 		if self.enter():
 			self.exit()
+			return true
 		#return false
 		
 	if self.status == StateStatus.RUNNING:
 		if self.process(delta, speed_scale):
 			self.exit()
+			return true
 			
 	if self.status == StateStatus.EXITED:
-		if self.loop:
-			self.status = StateStatus.READY
-			return false
+		#if self.loop:
+		self.status = StateStatus.READY
+		#self.enter()
+		#return false
 		return true
 		
 	return false
@@ -340,7 +343,7 @@ func as_string(indent: int = 0) -> String:
 func get_status_string() -> String:
 	return StateStatus.keys()[self.status]
 	
-func _draw_text_with_box(text: String, position: Vector2, font_size: float, padding_size: float, node: Node2D, text_color: Color, box_color: Color) -> Vector2:
+func _draw_text_with_box(text: String, position: Vector2, font_size: float, padding_size: float, node: CanvasItem, text_color: Color, box_color: Color) -> Vector2:
 	var text_size: Vector2 = ThemeDB.fallback_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
 	node.draw_rect(Rect2(position, Vector2(text_size.x + padding_size * 2, text_size.y + padding_size * 2)), box_color)
 	node.draw_string(ThemeDB.fallback_font, position + Vector2(padding_size, padding_size + text_size.y / 1.25), text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, text_color)
@@ -351,7 +354,7 @@ func _get_debug_draw_colors() -> Array[Color]:
 		Color.DARK_SLATE_GRAY.lerp(Color.WHITE_SMOKE, self._debug_draw_label_running_color_fade_factor), 
 		Color.LIGHT_GRAY.lerp(Color.DEEP_SKY_BLUE, self._debug_draw_label_running_color_fade_factor)
 	]
-func draw(node: Node2D, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
+func draw(node: CanvasItem, position: Vector2 = Vector2.ZERO, text_size: float = 16, padding_size: float = 8, delta: float = Engine.get_main_loop().root.get_process_delta_time()) -> float:
 
 	var y_offset: float = 0.0
 	if self.status == StateStatus.RUNNING:

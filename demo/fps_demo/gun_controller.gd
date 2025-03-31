@@ -21,8 +21,8 @@ var active_bullets: Array[Object] = []
 
 @export var gun_fsm_vis: FSMVis
 
-@export var fire_rate: float = 0.2
-@export var muzzle_velocity: float = 280.0
+@export var fire_rate: float = 0.05
+@export var muzzle_velocity: float = 20.0
 
 @export var root: Node3D
 @export var audio_player: AudioStreamPlayer3D
@@ -58,13 +58,34 @@ var active_bullets: Array[Object] = []
 			# Return to original position
 			tween.tween_property(self, ^":position", original_position, min(0.15, self.fire_rate / 2.0)) )
 		.add_enter_event(func():
-			var bullet = BULLET.instantiate()
-			bullet.get_speed_scale_method = self.get_speed_scale_method
-			root.add_child(bullet)
-			bullet.global_transform.basis = bullet_spawn_marker.global_transform.basis
-			bullet.global_position = bullet_spawn_marker.global_position
-			var direction = (bullet_spawn_marker.global_position - bullet_impulse_origin.global_position).normalized()
-			bullet.velocity_vector = direction*muzzle_velocity
+			var raycast = $"Sketchfab_model/22b0f42bc119498f9a458b3d68b4358e_fbx/RootNode/Armature/Object_4/RayCast3D" as RayCast3D
+			raycast.enabled = true
+			raycast.force_raycast_update()
+			if raycast.is_colliding():
+				var collider = raycast.get_collider()
+				if collider is RigidBody3D:
+					var velocity_vector = (raycast.get_collision_point() - self.global_position).normalized() * muzzle_velocity
+					collider.apply_impulse(velocity_vector, collider.to_local(raycast.get_collision_point()))
+					var bullet = BULLET.instantiate()
+					#bullet.get_speed_scale_method = self.get_speed_scale_method
+					root.add_child(bullet)
+					bullet.global_position = raycast.get_collision_point()
+					
+					bullet.apply_impulse(velocity_vector.normalized() * 35, Vector3.ZERO)
+					
+					
+			raycast.enabled = false
+
+			
+			
+			
+			#var bullet = BULLET.instantiate()
+			#bullet.get_speed_scale_method = self.get_speed_scale_method
+			#root.add_child(bullet)
+			#bullet.global_transform.basis = bullet_spawn_marker.global_transform.basis
+			#bullet.global_position = bullet_spawn_marker.global_position
+			#var direction = (bullet_spawn_marker.global_position - bullet_impulse_origin.global_position).normalized()
+			#bullet.velocity_vector = direction*muzzle_velocity
 			self.rounds_in_mag -= 1
 			self.play_sound(self.gunshot_sound)
 			self.trigger_muzzle_flash.emit()

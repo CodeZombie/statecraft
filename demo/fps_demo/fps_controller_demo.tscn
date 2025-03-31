@@ -1,10 +1,12 @@
-[gd_scene load_steps=39 format=3 uid="uid://n2voo0can5cp"]
+[gd_scene load_steps=33 format=3 uid="uid://n2voo0can5cp"]
 
 [ext_resource type="Material" uid="uid://b5s14mpj5gowu" path="res://demo/assets/materials/noise_material.tres" id="1_ibykj"]
 [ext_resource type="Script" uid="uid://2quensr3kj81" path="res://demo/fps_demo/fps_controller.gd" id="1_mntv1"]
+[ext_resource type="Material" uid="uid://dd5fwbqingsx5" path="res://demo/water_shader_mat.tres" id="2_mh4n8"]
 [ext_resource type="Script" uid="uid://b7graht17hm0q" path="res://demo/fps_demo/state_vis.gd" id="3_g8rs0"]
 [ext_resource type="Script" uid="uid://cgardrpd3npst" path="res://demo/fps_demo/aiming_controller_vis.gd" id="4_xegy3"]
 [ext_resource type="PackedScene" uid="uid://d2l8wld86eln1" path="res://demo/fps_demo/ak_308.tscn" id="6_mh4n8"]
+[ext_resource type="Script" uid="uid://c11i72m0rxogq" path="res://demo/fps_demo/exp_decay_joint_3d.gd" id="6_yocag"]
 
 [sub_resource type="Shader" id="Shader_g8rs0"]
 code = "// NOTE: Shader automatically converted from Godot Engine 4.4.stable's StandardMaterial3D.
@@ -136,65 +138,6 @@ shader_parameter/uv2_offset = Vector3(0, 0, 0)
 
 [sub_resource type="PlaneMesh" id="PlaneMesh_u58pc"]
 size = Vector2(16, 9)
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_s84ti"]
-frequency = 0.035
-fractal_weighted_strength = 0.68
-domain_warp_enabled = true
-domain_warp_type = 2
-domain_warp_amplitude = 24.47
-domain_warp_frequency = 0.03
-domain_warp_fractal_lacunarity = 3.1
-domain_warp_fractal_gain = 0.81
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_cyxo0"]
-width = 1024
-noise = SubResource("FastNoiseLite_s84ti")
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_s84ti"]
-width = 1024
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_qrxiy"]
-noise_type = 4
-frequency = 0.0787
-fractal_gain = 0.57
-fractal_weighted_strength = 0.37
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_vhdlh"]
-width = 1024
-as_normal_map = true
-bump_strength = 13.2
-normalize = false
-noise = SubResource("FastNoiseLite_qrxiy")
-
-[sub_resource type="FastNoiseLite" id="FastNoiseLite_u58pc"]
-frequency = 0.035
-
-[sub_resource type="NoiseTexture2D" id="NoiseTexture2D_qrxiy"]
-noise = SubResource("FastNoiseLite_u58pc")
-
-[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_hus12"]
-transparency = 1
-cull_mode = 2
-albedo_color = Color(0, 0.309804, 0.466667, 0.447059)
-albedo_texture = SubResource("NoiseTexture2D_cyxo0")
-metallic = 0.85
-metallic_specular = 0.22
-roughness = 0.4
-emission = Color(0.252028, 0.252028, 0.252028, 1)
-normal_enabled = true
-normal_texture = SubResource("NoiseTexture2D_vhdlh")
-clearcoat = 0.18
-clearcoat_roughness = 0.13
-anisotropy = 0.61
-anisotropy_flowmap = SubResource("NoiseTexture2D_s84ti")
-heightmap_scale = 4.96
-subsurf_scatter_strength = 0.65
-subsurf_scatter_skin_mode = true
-backlight = Color(0.70978, 0.80655, 1, 1)
-refraction_enabled = true
-refraction_scale = 0.09
-refraction_texture = SubResource("NoiseTexture2D_qrxiy")
 
 [sub_resource type="BoxMesh" id="BoxMesh_yocag"]
 size = Vector3(0.5, 0.5, 0.5)
@@ -497,8 +440,9 @@ material = ExtResource("1_ibykj")
 
 [node name="water" type="MeshInstance3D" parent="World/CSGBox3D33"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.25, 0)
+cast_shadow = 0
 mesh = SubResource("PlaneMesh_u58pc")
-surface_material_override/0 = SubResource("StandardMaterial3D_hus12")
+surface_material_override/0 = ExtResource("2_mh4n8")
 
 [node name="TinyBox" type="RigidBody3D" parent="World"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.811794, 0.77896, 10.4789)
@@ -601,13 +545,84 @@ mesh = SubResource("CylinderMesh_mh4n8")
 [node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6"]
 shape = SubResource("ConvexPolygonShape3D_6rg6t")
 
+[node name="Can" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.8839, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="Can2" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6.5635, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can2"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can2"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="Can3" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.1645, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can3"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can3"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="Can4" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7.7528, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can4"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can4"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="Can5" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.331, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can5"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can5"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="Can6" type="RigidBody3D" parent="World/Can6"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8.91364, -1.82252, 0.393929)
+mass = 3.0
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="World/Can6/Can6"]
+mesh = SubResource("CylinderMesh_mh4n8")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="World/Can6/Can6"]
+shape = SubResource("ConvexPolygonShape3D_6rg6t")
+
+[node name="ExpDecayJoint3D" type="Node3D" parent="." node_paths=PackedStringArray("root")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 9.31002, 0)
+script = ExtResource("6_yocag")
+root = NodePath("../Player/Head/ARm/Hand")
+metadata/_custom_type_script = "uid://c11i72m0rxogq"
+
+[node name="ak_308" parent="ExpDecayJoint3D" node_paths=PackedStringArray("gun_fsm_vis", "root") instance=ExtResource("6_mh4n8")]
+transform = Transform3D(-1.09278e-09, 0, 0.025, 0, 0.025, 0, -0.025, 0, -1.09278e-09, 0, -0.087, -0.391)
+gun_fsm_vis = NodePath("../../Player/gun_vis")
+root = NodePath("../..")
+
 [node name="Player" type="CharacterBody3D" parent="." node_paths=PackedStringArray("held_weapon")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.5, 8.81002, 0)
 disable_mode = 2
 collision_layer = 2
 floor_snap_length = 1.0
 script = ExtResource("1_mntv1")
-held_weapon = NodePath("Head/ARm/Hand/ak_308")
+held_weapon = NodePath("../ExpDecayJoint3D/ak_308")
 
 [node name="fps_controller_vis" type="Node2D" parent="Player"]
 script = ExtResource("3_g8rs0")
@@ -620,22 +635,21 @@ script = ExtResource("4_xegy3")
 position = Vector2(565, 0)
 script = ExtResource("4_xegy3")
 
+[node name="Neck" type="Node3D" parent="Player"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+
 [node name="Head" type="Node3D" parent="Player"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+script = ExtResource("6_yocag")
+metadata/_custom_type_script = "uid://c11i72m0rxogq"
+
+[node name="Camera3D" type="Camera3D" parent="Player/Head"]
 
 [node name="ARm" type="Node3D" parent="Player/Head"]
 physics_interpolation_mode = 1
 
 [node name="Hand" type="Node3D" parent="Player/Head/ARm"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.11, -0.015, -0.035)
-
-[node name="ak_308" parent="Player/Head/ARm/Hand" node_paths=PackedStringArray("gun_fsm_vis", "root") instance=ExtResource("6_mh4n8")]
-transform = Transform3D(-1.09278e-09, 0, 0.025, 0, 0.025, 0, -0.025, 0, -1.09278e-09, 0.111, -0.133, -0.325)
-gun_fsm_vis = NodePath("../../../../gun_vis")
-root = NodePath("../../../../..")
-
-[node name="Camera3D" type="Camera3D" parent="Player/Head"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.111165, -0.0209036, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.15, 0.005, -0.095)
 
 [node name="CeilingDetector" type="ShapeCast3D" parent="Player/Head"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.17129, 0)
