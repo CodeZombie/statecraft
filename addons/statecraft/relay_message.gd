@@ -1,4 +1,4 @@
-class_name RelayMessage extends Object
+class_name RelayMessage extends RefCounted
 
 # RelayMessages are used to propagate targetted method calls through a RelayNode tree to nodes that match the target_node_path.
 

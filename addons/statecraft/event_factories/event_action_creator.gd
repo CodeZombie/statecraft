@@ -1,4 +1,4 @@
-class_name EventActionCreator extends Object
+class_name EventActionCreator extends RefCounted
 
 var from_state_node_paths: Array
 var parent: State

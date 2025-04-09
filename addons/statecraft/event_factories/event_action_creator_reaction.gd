@@ -1,4 +1,4 @@
-class_name EventActionCreatorReaction extends Object
+class_name EventActionCreatorReaction extends RefCounted
 
 var from_state_nodepaths: Array
 var additional_condition: Callable
@@ -40,6 +40,7 @@ func and_if_false(callable: Callable) -> EventActionCreatorReaction:
 	return self
 
 func then_call(callable: Callable) -> State:
+	#self.event.attach_to_state(self.parent, self._wrap_additional_conditions(callable), self.from_state_nodepaths)
 	self.event.attach_to_state(self.parent, self._wrap_additional_conditions(callable), self.from_state_nodepaths)
 	return self.parent
 	

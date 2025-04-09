@@ -65,6 +65,13 @@ func process(delta: float, speed_scale: float = 1.0) -> bool:
 			if state.run(delta, speed_scale):
 				if self._exit_policy == ExitPolicy.REMOVE:
 					self._child_states.remove_at(self._child_states.find(state))
+					
+	if self._exit_policy == ExitPolicy.REMOVE:
+		var non_exited_children: Array[State] = []
+		for state in self._child_states:
+			if state.status != StateStatus.EXITED:
+				non_exited_children.append(state)
+		self._child_states = non_exited_children
 	
 	if self.have_all_states_exited():
 		return true

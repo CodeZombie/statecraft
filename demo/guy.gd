@@ -13,13 +13,14 @@ func move_to_origin():
 	self.position = Vector2(0, 0)
 	
 func _ready() -> void:
-	state_queue = StateQueue.new("movement_state_queue").set_exit_policy(StateQueue.ExitPolicy.KEEP)
-	state_queue.loop = true
+	state_queue = StateQueue.new(^"movement_state_queue").set_exit_policy(StateQueue.ExitPolicy.KEEP)
+	#.on_signal_path(^"move_to_pos_a:finished_moving").then_call(func(x): print("finished moving called"))
+	#state_queue.loop = true
 	#state_queue.set_execution_mode(StateQueue.ExecutionMode.PARALLEL)
 	#state_queue.set_exit_policy(StateQueue.ExitPolicy.REMOVE)
-	state_queue.add_state(
-		State.new("move_to_pos_a")\
-		.add_signal("finished_moving", [{"name": "x", "type": TYPE_INT}])
+	state_queue.add(
+		State.new(^"move_to_pos_a")\
+		.add_signal(&"finished_moving", [{"name": "x", "type": TYPE_INT}])
 		.add_enter_event(func():
 			self.scale = Vector2(1,1)
 			self.position.x = 300
@@ -27,24 +28,25 @@ func _ready() -> void:
 		.add_process_event(func(delta: float, state: State):
 			self.position = lerp(self.position, pos_a.position, speed * delta)
 			if self.position.distance_to(pos_a.position) < 10:
-				state.emit_signal("finished_moving", 32)
-			)
-		.on("finished_moving", func(val: int, state: State): state.exit())
+				state.emit_signal(&"finished_moving", 32)
+				return true
+			)\
+		.on_signal_path(^":finished_moving").then_exit()
 		)\
 	#.advance_on("move_to_pos_a", "move_to_pos_a.finished_moving")\
 	#state_queue = StateQueue.new("movement_state_queue")\
-	.add_state(
-		TweenState.new("move_to_pos_b", self, func(tween):
+	.add(
+		TweenState.new(^"move_to_pos_b", self, func(tween):
 			tween.tween_property(self, "scale", Vector2(2, 2), 2)
 			)\
 		.add_process_event(func(_delta, state):
 			self.position = lerp(self.position, pos_b.position, speed * _delta)
 			if self.position.distance_to(pos_b.position) < 10:
-				state.exit())
+				return true)
 		#.add_exit_event(func():
 			#state_queue.add_state_front(TimerState.new("timer_test", 1.0)))
 		)\
-	.add_state($Sprite2D.get_rotate_state())
+	.add($Sprite2D.get_rotate_state())
 	#.add_state(
 		#TweenState.new("rotate", self, func(tween):
 			#tween.tween_property(self, "rotation", self.rotation + PI/2, 0.5) )
@@ -52,7 +54,7 @@ func _ready() -> void:
 	#.add_state(
 		#TweenState.new("move_to_pos_b", self, func(tween):
 			#tween.tween_property(self, "scale", Vector2(1, 1), 0.5))\
-		#.add_update_event(func(state, delta):
+		#.add_process_event(func(state, delta):
 			#self.position = lerp(self.position, pos_b.position, speed * delta)
 			#if self.position.distance_to(pos_b.position) < 10:
 				#state.emit("move_finished") ))\
@@ -103,21 +105,21 @@ func _on_pause_button_pressed() -> void:
 func _on_rand_move_button_pressed() -> void:
 	var viewport_size: Vector2 = get_viewport_rect().size
 	var target_location: Vector2 = Vector2(randf_range(0, viewport_size.x), randf_range(0, viewport_size.y))
-	self.state_queue.add_state(self.get_move_state("rand_move", target_location))
+	self.state_queue.add(self.get_move_state("rand_move", target_location))
 
 func _on_move_button_pressed() -> void:
-	self.state_queue.add_state(self.get_move_state("move_to_a", self.pos_a.global_position))
+	self.state_queue.add(self.get_move_state("move_to_a", self.pos_a.global_position))
 
 func _on_rot_90_button_pressed() -> void:
-	self.state_queue.add_state(self.get_rotation_state("rot 90", self, 90))
+	self.state_queue.add(self.get_rotation_state("rot 90", self, 90))
 
 func _on_gun_rot_90_button_pressed() -> void:
-	self.state_queue.add_state(self.get_rotation_state("gun rot 90", $Sprite2D, 90))
+	self.state_queue.add(self.get_rotation_state("gun rot 90", $Sprite2D, 90))
 
 func _on_grow_button_pressed() -> void:
-	self.state_queue.add_state(
+	self.state_queue.add(
 		State.new("grow")
-		.add_update_event(func(delta: float):
+		.add_process_event(func(delta: float):
 			self.scale += Vector2(5,5) * delta
 			if self.scale.x >= 2:
 				return true
@@ -127,9 +129,9 @@ func _on_grow_button_pressed() -> void:
 	)
 
 func _on_shrink_button_pressed() -> void:
-		self.state_queue.add_state(
+		self.state_queue.add(
 		State.new("shrink")
-		.add_update_event(func(delta: float):
+		.add_process_event(func(delta: float):
 			self.scale -= Vector2(5,5) * delta
 			if self.scale.x <= 1:
 				return true
@@ -162,6 +164,8 @@ func _on_run_instantly_button_pressed() -> void:
 
 func _on_spin_and_unspin_button_pressed() -> void:
 	var spin_and_unspin_state_queue: StateQueue = StateQueue.new("spin_and_unspin")
-	spin_and_unspin_state_queue.add_state(self.get_rotation_state("rot 90", self, 90))
-	spin_and_unspin_state_queue.add_state(self.get_rotation_state("rot -90", self, -90))
-	self.state_queue.add_state(spin_and_unspin_state_queue)
+	spin_and_unspin_state_queue.set_exit_policy(StateQueue.ExitPolicy.KEEP)
+	spin_and_unspin_state_queue.add(self.get_rotation_state("rot 90", self, 90))
+	spin_and_unspin_state_queue.add(self.get_rotation_state("rot -90", self, -90))
+	self.state_queue.add(spin_and_unspin_state_queue)
+	

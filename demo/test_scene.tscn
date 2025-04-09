@@ -1,8 +1,7 @@
-[gd_scene load_steps=5 format=3 uid="uid://byaxnyxy8x01g"]
+[gd_scene load_steps=4 format=3 uid="uid://byaxnyxy8x01g"]
 
 [ext_resource type="Texture2D" uid="uid://cuolgs6oqu5jq" path="res://icon.svg" id="1_vduxx"]
 [ext_resource type="Script" uid="uid://bc3k8bwt82lu4" path="res://demo/guy.gd" id="2_xdm2f"]
-[ext_resource type="Texture2D" uid="uid://di1l4tanikgbh" path="res://demo/assets/gun_body.png" id="3_cnhne"]
 [ext_resource type="Script" uid="uid://cwg5cenqc78q8" path="res://demo/held_object.gd" id="4_m13i4"]
 
 [node name="test_scene" type="Node2D"]
@@ -19,7 +18,6 @@ pause_button = NodePath("../Panel/VBoxContainer/HBoxContainer2/pause_button")
 [node name="Sprite2D" type="Sprite2D" parent="guy"]
 position = Vector2(64, 33)
 scale = Vector2(0.25, 0.25)
-texture = ExtResource("3_cnhne")
 script = ExtResource("4_m13i4")
 
 [node name="guy2" type="Sprite2D" parent="." node_paths=PackedStringArray("pos_a", "pos_b", "debug_label", "pause_button")]
@@ -34,7 +32,6 @@ pause_button = NodePath("../Panel/VBoxContainer/HBoxContainer2/pause_button")
 [node name="Sprite2D" type="Sprite2D" parent="guy2"]
 position = Vector2(64, 33)
 scale = Vector2(0.25, 0.25)
-texture = ExtResource("3_cnhne")
 script = ExtResource("4_m13i4")
 
 [node name="pos_a" type="Node2D" parent="."]

@@ -3,6 +3,8 @@ class_name RelayNode extends RefCounted
 
 var id: NodePath
 
+var created_by: String
+
 # We're using a Dict like a Set. We don't care about the values, just the keys.
 var relay_messages: Dictionary[RelayMessage, bool]
 
@@ -12,6 +14,9 @@ func _init(id_: NodePath):
 	#assert(id_.get_name_count() == 1, "RelayNode id must be a single item, not path: \"{0}\"".format({0: id_}))
 	#assert(id_.get_subname_count() == 0, "RelayNode id must be not contain subnames: \"{0}\"".format({0: id_}))
 	self.id = id_
+	
+	for call_dict in get_stack():
+		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
 
 func get_all_children() -> Array:
 	return []

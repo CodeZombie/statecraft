@@ -17,7 +17,6 @@ var exit_events: Array[Callable] = []
 var condition_events: Dictionary[Callable, Array] = {}
 
 var skippable: bool
-var created_by: String
 var status: StateStatus = StateStatus.READY
 var props: Dictionary = {}
 var _exit_after_enter_if_no_process_events: bool = true
@@ -29,6 +28,8 @@ var _timers: Dictionary[float, SCUtils.CallbackTimer] = {}
 var _dynamic_timers: Array[SCUtils.DynamicCallbackTimer] = []
 
 var _unique_id_counter: int = 0
+
+var _broadcast_callables: Dictionary[StringName, Array]
 
 ###
 ### STATIC METHODS
@@ -70,8 +71,13 @@ func _init(id: NodePath, auto_exit=true):
 	super(id)
 	self._exit_after_enter_if_no_process_events = auto_exit
 	
-	for call_dict in get_stack():
-		self.created_by += " --> {source}.{function}:{line}".format(call_dict)
+	self.broadcast_.connect(self._propagate_broadcast)
+	self.broadcast_.connect(self._on_broadcast)
+
+
+func _propagate_broadcast(broadcast_name: StringName):
+	for child in self.get_all_children():
+		child.broadcast_.emit(broadcast_name)
 
 
 ###
@@ -153,13 +159,24 @@ func add_on_dynamic_timer_event(timer_duration_callable: Callable, callback: Cal
 	return self
 
 func add_on_broadcast_event(broadcast_name: StringName, callable: Callable) -> State:
-	self.broadcast_.connect(func(broadcast_name_: StringName):
-		if self.status == StateStatus.RUNNING and broadcast_name == broadcast_name_:
-			callable.call())
+	if broadcast_name not in self._broadcast_callables.keys():
+		self._broadcast_callables[broadcast_name] = []
+	self._broadcast_callables[broadcast_name].append(callable)
+	
+	#self.broadcast_.connect(func(broadcast_name_: StringName):
+		#if self.status == StateStatus.RUNNING and broadcast_name == broadcast_name_:
+			#callable.call())
 	return self
+	
+func _on_broadcast(broadcast_name: StringName) -> void:
+	if self.status == StateStatus.RUNNING:
+		if broadcast_name in self._broadcast_callables.keys():
+			for callable in self._broadcast_callables[broadcast_name]:
+				callable.call()
 
 func broadcast(broadcast_name: StringName) -> void:
-	self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [&"broadcast_", broadcast_name]))
+	self.broadcast_.emit(broadcast_name)
+	#self.propagate_message_to_children(RelayMessage.new(^"**", &"emit_signal", [&"broadcast_", broadcast_name]))
 
 func set_prop(key: String, value: Variant) -> State:
 	self.props[key] = value

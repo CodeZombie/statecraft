@@ -1,6 +1,7 @@
-[gd_scene load_steps=44 format=4 uid="uid://vxmpekohjt3g"]
+[gd_scene load_steps=45 format=4 uid="uid://vxmpekohjt3g"]
 
 [ext_resource type="Script" uid="uid://c1ppbnurq7wy5" path="res://demo/fps_demo/gun_controller.gd" id="1_ai0ep"]
+[ext_resource type="Script" uid="uid://cgardrpd3npst" path="res://demo/fps_demo/aiming_controller_vis.gd" id="2_28isq"]
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s83mo"]
 resource_name = "Gorka_1"
@@ -2974,8 +2975,9 @@ _data = {
 &"LVA4_Armature|wpn_val_walk": SubResource("Animation_uowja")
 }
 
-[node name="low_poly_val" type="Node3D" node_paths=PackedStringArray("audio_player", "bullet_impulse_origin", "bullet_spawn_marker")]
+[node name="low_poly_val" type="Node3D" node_paths=PackedStringArray("gun_fsm_vis", "audio_player", "bullet_impulse_origin", "bullet_spawn_marker")]
 script = ExtResource("1_ai0ep")
+gun_fsm_vis = NodePath("FSMVis")
 audio_player = NodePath("AudioStreamPlayer3D")
 bullet_impulse_origin = NodePath("Sketchfab_model/17f46f90b2d64803ad38ac474c515e7c_fbx/Object_2/RootNode/LVA4_Armature/Object_7/Skeleton3D/BoneAttachment3D/BulletImpulseOrigin")
 bullet_spawn_marker = NodePath("Sketchfab_model/17f46f90b2d64803ad38ac474c515e7c_fbx/Object_2/RootNode/LVA4_Armature/Object_7/Skeleton3D/BoneAttachment3D/BulletSpawnMarker")
@@ -3906,3 +3908,7 @@ light_energy = 5.94
 light_indirect_energy = 5.617
 spot_range = 8.66062
 spot_angle = 33.8205
+
+[node name="FSMVis" type="Node2D" parent="."]
+script = ExtResource("2_28isq")
+metadata/_custom_type_script = "uid://cgardrpd3npst"

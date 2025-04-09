@@ -1,4 +1,4 @@
-class_name SCUtils extends Object
+class_name SCUtils extends RefCounted
 
 
 ###

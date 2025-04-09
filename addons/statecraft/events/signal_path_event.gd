@@ -16,7 +16,7 @@ func attach_to_state(state: State, callable: Callable, target_state_paths: Array
 			state.recieve_message(RelayMessage.new(
 				signal_node_path,
 				&"connect_signal_via_name",
-				[signal_name, bound_callable],
+				[signal_name, bound_callable]
 			))
 		else:
 			if not bridge_signal:

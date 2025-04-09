@@ -2,11 +2,11 @@ class_name SignalRelayNode extends RelayNode
 
 var _signal_virtual_connections: Dictionary[StringName, Array] = {}
 
-var _unique_signal_name_interator: int = 0
+var _unique_signal_name_iterator: int = 0
 
 func create_unique_signal() -> Signal:
-	var signal_name: StringName = StringName("__INTERNAL_SIGNAL_{0}".format({0:self._unique_signal_name_interator}))
-	self._unique_signal_name_interator += 1
+	var signal_name: StringName = StringName("__INTERNAL_SIGNAL_{0}".format({0:self._unique_signal_name_iterator}))
+	self._unique_signal_name_iterator += 1
 	self.add_user_signal(signal_name)
 	return self.get_signal(signal_name)
 
@@ -93,8 +93,10 @@ func _wrap_signal_callback(callable: Callable, strip_args: bool, signal_argument
 				callable.callv(args)
 			elif callable_arg_count == signal_argument_count + 1:
 				callable.callv(args + [object])
+			elif callable_arg_count == 0:
+				callable.call()
 			else:
-				assert(false, "Callable has too many arguments ({0}) to connect to signal with an argument count of {1}".format({0: callable_arg_count, 1: signal_argument_count}))
+				assert(false, "{cb} Callable argument count ({0}) does not match signal with an argument count of {1}".format({'cb': self.created_by, 0: callable_arg_count, 1: signal_argument_count}))
 
 func connect_signal(sig: Signal, callable: Callable, strip_args: bool = false) -> void:
 	var signal_name: StringName = sig.get_name()
@@ -133,10 +135,19 @@ func connect_signal(sig: Signal, callable: Callable, strip_args: bool = false) -
 	if callable not in self._signal_virtual_connections[signal_unique_id]:
 		self._signal_virtual_connections[signal_unique_id].append(self._wrap_signal_callback(callable, strip_args, signal_argument_count))
 
-func connect_signal_via_name(signal_name: StringName, callable: Callable, flags: int = 0) -> void:
-	var signal_argument_count: int = self._get_internal_signal_argument_count(signal_name)
-	var callable_argument_count: int = max(callable.get_unbound_arguments_count(), callable.get_argument_count())
-	if callable_argument_count == signal_argument_count:
-		self.connect(signal_name, callable, flags)
-	elif callable_argument_count == signal_argument_count + 1:
-		self.connect(signal_name, callable.bind(self), flags)
+func connect_signal_via_name(signal_name: StringName, callable: Callable, flags: int = 0, strip_args: bool = false) -> void:
+	
+	if not self.has_signal(signal_name):
+		print(self.id, " does not have signal ", signal_name)
+		return
+		
+	self.connect_signal(self.get_signal(signal_name), callable, strip_args)
+	#print(self.id, ":", signal_name, " connected")
+	#var signal_argument_count: int = self._get_internal_signal_argument_count(signal_name)
+	#var callable_argument_count: int = max(callable.get_unbound_arguments_count(), callable.get_argument_count())
+	#if callable_argument_count == signal_argument_count:
+		#self.connect(signal_name, callable, flags)
+	#elif callable_argument_count == signal_argument_count + 1:
+		#self.connect(signal_name, callable.bind(self), flags)
+	#else:
+		#assert(false, str("Error: could not connected ", self.id, ":", signal_name, ". Callable arg count mismatch."))
